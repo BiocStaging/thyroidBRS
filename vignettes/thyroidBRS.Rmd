@@ -1,0 +1,131 @@
+---
+title: "Introduction to thyroidBRS"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Introduction to thyroidBRS}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+```{r setup}
+library(thyroidBRS)
+```
+
+## Background
+
+Papillary thyroid carcinoma (PTC) is predominantly driven by either a
+`BRAF`^V600E^ mutation or a RAS-family mutation. Agrawal et al. (2014)
+(*Cell*, [doi:10.1016/j.cell.2014.09.050](https://doi.org/10.1016/j.cell.2014.09.050))
+showed that these two driver groups have distinguishable transcriptional
+profiles, and defined the **BRAF-RAS Score (BRS)**: a continuous score from
+-1 (most BRAF-like) to +1 (most RAS-like), computed from a 71-gene expression
+signature (their Figure S7A).
+
+The original study only reported a BRS for the 391 (of 496) tumors that had
+**both** exome and RNA sequencing data — exome data was needed to define
+which tumors belonged to the BRAF-mutant reference group and which to the
+RAS-mutant reference group, but **not** to score a tumor once those two
+reference groups (and their expression centroids) are fixed. Any additional
+sample with RNA-seq expression data can be scored against those same
+centroids, with no mutation calling required.
+
+`thyroidBRS` implements exactly that two-step idea:
+
+1. **`brs_fit()`** — given a cohort with known BRAF-mutant/RAS-mutant labels
+   for at least some samples, computes the two reference centroids.
+2. **`predict()`** — scores *any* sample's expression against those
+   centroids, including samples that were never labeled.
+
+## A worked example
+
+`thyroidBRS` ships with the 71-gene signature ([brs_genes]) but not any real
+expression data (the underlying TCGA data is large and best fetched with
+`TCGAbiolinks` directly). This vignette instead uses a small simulated
+cohort so the example runs quickly and self-contained; the same calls work
+unchanged on real data.
+
+```{r simulate-data}
+set.seed(1)
+genes <- na.omit(brs_genes$current_symbol)
+samples <- paste0("sample_", 1:40)
+
+# In real data this would be log2(TPM + 1) expression, genes x samples.
+expr <- matrix(
+  rnorm(length(genes) * length(samples)),
+  nrow = length(genes), dimnames = list(genes, samples)
+)
+
+# Simulate 24 samples with a known BRAF-mutant/RAS-mutant label...
+labels <- setNames(rep(c("Braf-like", "Ras-like"), each = 12), samples[1:24])
+
+# ...and 16 with expression only (as if their exome data were unavailable).
+unlabeled_samples <- samples[25:40]
+```
+
+### Fit the reference centroids
+
+```{r fit}
+fit <- brs_fit(expr, labels)
+fit
+```
+
+### Score the labeled cohort, as a sanity check
+
+```{r validate}
+preds_labeled <- predict(fit, expr[, names(labels)])
+validate_brs(preds_labeled, labels)
+```
+
+With this simulated (random, unstructured) data, concordance will be close
+to chance — with a real, biologically-driven cohort like TCGA-THCA, the
+concordance against the published labels is 98.7% (386/391 samples; see
+`?brs_fit` and the package README for details on how that was measured).
+
+### Score the previously-unlabeled samples
+
+This is the actual point of the package: extending classification beyond
+the original exome-sequenced cohort.
+
+```{r classify-new}
+preds_new <- predict(fit, expr[, unlabeled_samples])
+head(preds_new)
+```
+
+### One-step alternative
+
+`brs_score()` wraps `brs_fit()` + `predict()` for the common case of scoring
+the same cohort you fit on:
+
+```{r one-shot}
+all_preds <- brs_score(expr, labels)
+head(all_preds)
+```
+
+## Using real TCGA data
+
+To reproduce the BRS on TCGA-THCA:
+
+```r
+library(TCGAbiolinks)
+# Download STAR - Counts RNA-seq for TCGA-THCA (Primary Tumor), build a
+# log2(TPM + 1) matrix keyed by gene symbol, one column per patient — see
+# your own preprocessing pipeline for the exact steps.
+#
+# Then pull the published BRAF_RAF_class as your reference labels:
+subtype_table <- TCGAquery_subtype(tumor = "thca")
+labels <- setNames(as.character(subtype_table$BRAF_RAF_class), subtype_table$patient)
+labels[trimws(labels) == ""] <- NA  # "" means unclassified in this table, not a real label
+
+fit <- brs_fit(expr, labels)
+preds <- predict(fit, expr)  # scores every patient, including previously-unclassified ones
+```
+
+## Reference
+
+Agrawal N, Akbani R, Aksoy BA, et al. Integrated Genomic Characterization
+of Papillary Thyroid Carcinoma. *Cell*. 2014;159(3):676-690.
+[doi:10.1016/j.cell.2014.09.050](https://doi.org/10.1016/j.cell.2014.09.050)

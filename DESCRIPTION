@@ -1,0 +1,32 @@
+Package: thyroidBRS
+Title: BRAF-RAS Score (BRS) Classifier for Papillary Thyroid Carcinoma
+Version: 0.1.0
+Authors@R:
+    person("Camila", "Barrios", email = "paulacamilabarrioscervantes@gmail.com", role = c("aut", "cre"))
+Description: Computes the BRAF-RAS Score (BRS), a 71-gene expression-based
+    signature that quantifies whether a papillary thyroid carcinoma (PTC)
+    sample resembles a BRAF-V600E-mutant or a RAS-mutant transcriptional
+    profile, as described in Agrawal et al. (2014) <doi:10.1016/j.cell.2014.09.050>,
+    Extended Experimental Procedures, section 14.1. The original study only
+    scored the subset of samples for which both exome and RNA sequencing
+    data were available, since exome data was needed to define the two
+    reference groups (but not to score additional samples). This package
+    lets you fit the reference centroids from any cohort with known
+    BRAF-mutant/RAS-mutant labels and then score new samples — including
+    ones with expression data only — using just their gene expression.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+Depends:
+    R (>= 4.1)
+Imports:
+    stats
+Suggests:
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown
+Config/testthat/edition: 3
+VignetteBuilder: knitr
+URL: https://github.com/camilasauria/thyroidBRS
+BugReports: https://github.com/camilasauria/thyroidBRS/issues
+Config/roxygen2/version: 8.1.0
