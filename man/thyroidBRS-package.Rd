@@ -22,10 +22,5 @@ Useful links:
 \author{
 \strong{Maintainer}: Camila Barrios \email{paulacamilabarrioscervantes@gmail.com}
 
-Authors:
-\itemize{
-  \item Camila Barrios \email{paulacamilabarrioscervantes@gmail.com}
-}
-
 }
 \keyword{internal}

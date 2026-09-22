@@ -4,48 +4,75 @@
 \alias{brs_score}
 \title{Fit and score in one step}
 \usage{
-brs_score(expr, labels, newdata = expr, genes = NULL, log2_transform = FALSE)
+brs_score(
+  expr,
+  labels,
+  newdata = expr,
+  genes = NULL,
+  log2_transform = FALSE,
+  standardize = c("reference", "cohort", "rank"),
+  assay = NULL
+)
 }
 \arguments{
-\item{expr}{A numeric matrix of gene expression, features (genes) as rows
-and samples as columns. Row names must be gene symbols; column names
-must be sample identifiers. Expression should already be on a
-log-like scale (e.g. \code{log2(TPM + 1)}); see \code{log2_transform} if it isn't.}
+\item{expr}{Gene expression, features (genes) as rows and samples as
+columns: a numeric matrix, a
+\link[SummarizedExperiment:SummarizedExperiment-class]{SummarizedExperiment::SummarizedExperiment} or a
+\code{Biobase::ExpressionSet} (see \link{containers}). Row names must be gene
+symbols; column names must be sample identifiers. Expression should
+already be on a log-like scale (e.g. \code{log2(TPM + 1)}); see
+\code{log2_transform} if it isn't.}
 
-\item{labels}{A named character vector giving the reference class for
-the samples that have one. Names must match a subset of
-\code{colnames(expr)}; values must be \code{"Braf-like"} or \code{"Ras-like"} (samples
-with any other value, \code{NA}, or simply absent from \code{labels} are treated
-as unlabeled and excluded from centroid fitting, but can still be
-scored with \code{\link[=predict.brs_fit]{predict.brs_fit()}}).}
+\item{labels}{A named character vector giving the reference group for the
+samples that have one, or a single string naming a column of the
+object's \code{colData()}/\code{pData()}. Names must match a subset of
+\code{colnames(expr)}.
+Values naming the BRAF group (\code{"BRAF_V600E"}, \code{"BRAF"}, \code{"BRAF-like"},
+\code{"Braf-like"}) and the RAS group (\code{"RAS"}, \code{"RAS-like"}, \code{"Ras-like"})
+are recognised, case-insensitively. Samples with any other value, \code{NA},
+or simply absent from \code{labels} are treated as unlabeled and excluded from
+centroid fitting, but can still be scored with \code{\link[=predict.brs_fit]{predict.brs_fit()}}.}
 
 \item{newdata}{Expression matrix to score. Defaults to \code{expr} itself, so
 \code{brs_score(expr, labels)} scores every sample in \code{expr}, including the
 ones without a label.}
 
 \item{genes}{Character vector of gene symbols to use as the signature.
-Defaults to the current, alias-resolved names in \link{brs_genes} (68 genes
-after excluding the ones that never occur in \code{expr}).}
+Defaults to the alias-resolved names in \link{brs_genes} (70 genes; \code{FLJ23867}
+has no current symbol and is excluded).}
 
-\item{log2_transform}{Logical. If \code{TRUE}, applies \code{log2(expr + 1)} to
-\code{expr} before fitting (use this if you are passing raw TPM/counts
-instead of already-transformed values). Default \code{FALSE}.}
+\item{log2_transform}{Logical. If \code{TRUE}, applies \code{log2(expr + 1)} to \code{expr}
+before fitting (use this if you are passing raw TPM/counts instead of
+already-transformed values). The choice is stored in the returned object
+and reused by \code{\link[=predict.brs_fit]{predict.brs_fit()}}, so the two can no longer disagree.
+Default \code{FALSE}.}
+
+\item{standardize}{Passed to \code{\link[=predict.brs_fit]{predict.brs_fit()}}.}
+
+\item{assay}{Name or index of the assay to use when \code{expr} is a
+\code{SummarizedExperiment}. Ignored otherwise. Defaults to the first assay,
+with a warning when there is more than one. For GDC data the first
+assay is raw counts, so use \code{assay = "tpm_unstranded"} with
+\code{log2_transform = TRUE}, or a normalized assay of your own.}
 }
 \value{
 See \code{\link[=predict.brs_fit]{predict.brs_fit()}}.
 }
 \description{
-Convenience wrapper equivalent to \code{predict(brs_fit(expr, labels, ...), newdata)},
-for the common case of scoring the same cohort you used to fit the
-centroids (e.g. to extend a partially-labeled cohort to full coverage).
+Convenience wrapper equivalent to
+\code{predict(brs_fit(expr, labels, ...), newdata)}, for the common case of
+scoring the same cohort you used to fit the centroids (e.g. to extend a
+partially-labeled cohort to full coverage).
 }
 \examples{
 set.seed(1)
 genes <- na.omit(brs_genes$current_symbol)[1:10]
 samples <- paste0("S", 1:20)
-expr <- matrix(rnorm(length(genes) * length(samples)), nrow = length(genes),
-               dimnames = list(genes, samples))
-labels <- setNames(rep(c("Braf-like", "Ras-like"), each = 8), samples[1:16])
+expr <- matrix(rnorm(length(genes) * length(samples)),
+    nrow = length(genes),
+    dimnames = list(genes, samples)
+)
+labels <- setNames(rep(c("BRAF_V600E", "RAS"), each = 8), samples[1:16])
 brs_score(expr, labels, genes = genes)
 
 }

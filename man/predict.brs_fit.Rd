@@ -4,41 +4,91 @@
 \alias{predict.brs_fit}
 \title{Score samples with a fitted BRS model}
 \usage{
-\method{predict}{brs_fit}(object, newdata, log2_transform = FALSE, ...)
+\method{predict}{brs_fit}(
+  object,
+  newdata,
+  log2_transform = NULL,
+  standardize = c("reference", "cohort", "rank"),
+  assay = NULL,
+  ...
+)
 }
 \arguments{
 \item{object}{A \code{"brs_fit"} object, as returned by \code{\link[=brs_fit]{brs_fit()}}.}
 
-\item{newdata}{A numeric matrix of gene expression to score (same gene
-symbol row-naming convention as the \code{expr} originally passed to
-\code{\link[=brs_fit]{brs_fit()}}). Genes in \code{object$genes_used} missing from \code{newdata} are
-an error, since the distance calculation would then be inconsistent
-with how the centroids were defined.}
+\item{newdata}{Gene expression to score, in any of the forms \code{expr}
+accepts (see \link{containers}) and with the same gene symbol row naming as
+the \code{expr} originally passed to \code{\link[=brs_fit]{brs_fit()}}. Genes in
+\code{object$genes_used} missing from \code{newdata} are an error, since the
+distance calculation would then be inconsistent with how the centroids
+were defined.}
 
-\item{log2_transform}{Logical, as in \code{\link[=brs_fit]{brs_fit()}}. Must match whatever was
-used when fitting, since the stored per-gene mean/SD are on that scale.}
+\item{log2_transform}{Logical, or \code{NULL} (the default) to reuse whatever
+was used when fitting \code{object}. The stored per-gene mean/SD are on that
+scale, so overriding it is almost always a mistake and warns.}
+
+\item{standardize}{How to put \code{newdata} on the scale the centroids live
+on. \code{"reference"} (the default) uses the per-gene mean and SD frozen from
+the fit. \code{"cohort"} re-derives them from \code{newdata} itself, and \code{"rank"}
+replaces each sample's expression by within-sample ranks first. The last
+two need at least 3 samples. See the section below before changing it.}
+
+\item{assay}{Assay to use when \code{newdata} is a \code{SummarizedExperiment}; see
+\code{\link[=brs_fit]{brs_fit()}}.}
 
 \item{...}{Unused; present for S3 consistency.}
 }
 \value{
 A data frame with one row per sample in \code{colnames(newdata)}:
-\code{sample}, \code{brs_score} (negative = more BRAF-like, positive = more
-RAS-like) and \code{brs_class} (\code{"Braf-like"} or \code{"Ras-like"}).
+\code{sample}, \code{brs_score} (normalized distance difference; negative = more
+BRAF-like, positive = more RAS-like), \code{brs_scaled} (the same score
+rescaled to \eqn{[-1, +1]} across the scored samples, \code{NA} when it cannot
+be determined) and \code{brs_class} (\code{"Braf-like"} or \code{"Ras-like"}).
 }
 \description{
-Computes the BRAF-RAS Score (BRS) and the resulting class for every
-sample in \code{newdata}, using the centroids and per-gene mean/SD stored in
-\code{object} (from \code{\link[=brs_fit]{brs_fit()}}) — \code{newdata} samples do not need to have been
-part of the reference cohort used to fit those centroids, and do not need
-any mutation/exome information.
+Computes the BRAF-RAS Score (BRS) and the resulting class for every sample
+in \code{newdata}, using the centroids and per-gene mean/SD stored in \code{object}
+(from \code{\link[=brs_fit]{brs_fit()}}). \code{newdata} samples do not need to have been part of the
+reference cohort used to fit those centroids, and do not need any
+mutation/exome information.
 }
+\section{How the score is computed}{
+
+Following Agrawal et al. (2014), Extended Experimental Procedures 14.1, the
+score of a tumor \code{t} is the difference between its distance to the two
+centroids,
+
+\deqn{BRS(t) = \|v(t) - c(B)\|_2 - \|v(t) - c(R)\|_2}
+
+where the distance is a normalized Euclidean distance. Here \code{v(t)} is the
+sample's expression vector z-scored gene-by-gene against the reference
+cohort, and the norm is divided by the square root of the number of
+signature genes, so that scores stay comparable when the gene set shrinks
+(for example because some signature genes are absent from \code{newdata}).
+
+Negative scores are BRAF-V600E-like and positive scores RAS-like. A score
+of exactly \code{0} is not defined by the paper; it is assigned to \code{"Ras-like"}
+here, consistent with treating the non-negative half as the RAS side.
+
+The BRS values published for TCGA-THCA are additionally rescaled to
+\eqn{[-1, +1]}, by dividing the negative scores by the most negative value
+and the positive scores by the largest one. \code{brs_scaled} reproduces that
+rescaling. Note that it is a property of the \emph{set of samples being scored},
+not of a sample on its own: scoring a different cohort, or a single sample,
+gives a different (or undefined) rescaling. Use \code{brs_score} when you need a
+value that is stable per sample, and \code{brs_scaled} when you need a value on
+the same axis as the published figures.
+}
+
 \examples{
 set.seed(1)
 genes <- na.omit(brs_genes$current_symbol)[1:10]
 samples <- paste0("S", 1:20)
-expr <- matrix(rnorm(length(genes) * length(samples)), nrow = length(genes),
-               dimnames = list(genes, samples))
-labels <- setNames(rep(c("Braf-like", "Ras-like"), each = 8), samples[1:16])
+expr <- matrix(rnorm(length(genes) * length(samples)),
+    nrow = length(genes),
+    dimnames = list(genes, samples)
+)
+labels <- setNames(rep(c("BRAF_V600E", "RAS"), each = 8), samples[1:16])
 fit <- brs_fit(expr, labels, genes = genes)
 predict(fit, expr[, 17:20])
 

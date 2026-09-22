@@ -2,22 +2,41 @@
 #'
 #' The 71-gene expression signature used to compute the BRAF-RAS Score (BRS)
 #' for papillary thyroid carcinoma (PTC), as published in Agrawal et al.
-#' (2014), Figure S7A. Gene symbols were transcribed manually from the
-#' published heatmap (no machine-readable gene list was published alongside
-#' the figure) and cross-checked against current HGNC aliases.
+#' (2014), Figure S7A. No machine-readable gene list was released with the
+#' paper, so the symbols were transcribed from the published heatmap and then
+#' verified against it row by row; see `data-raw/brs_genes.md` for the
+#' provenance and the checks that were run.
 #'
-#' @format A data frame with 71 rows and 2 columns:
+#' @format A data frame with 71 rows and 4 columns:
 #' \describe{
 #'   \item{original_symbol}{Gene symbol exactly as it appears in the 2014
 #'     publication's Figure S7A.}
-#'   \item{current_symbol}{Current HGNC-approved symbol. Identical to
-#'     `original_symbol` for genes whose symbol has not changed. `NA` for
-#'     `FLJ23867`, which could not be resolved to any symbol present in
-#'     current genome annotations (checked against GENCODE-derived gene
-#'     symbols and `org.Hs.eg.db` aliases) and should be treated as
-#'     permanently missing from the signature — [brs_fit()] and
-#'     [predict.brs_fit()] silently drop it.}
+#'   \item{current_symbol}{Current HGNC-approved symbol, resolved against
+#'     `org.Hs.eg.db`. Identical to `original_symbol` for genes whose symbol
+#'     has not changed. `NA` for `FLJ23867`, which does not map to any symbol
+#'     or alias in current annotation and should be treated as permanently
+#'     missing from the signature. [brs_fit()] and [predict.brs_fit()]
+#'     drop it.}
+#'   \item{block}{Which of the two row-clusters of Figure S7A the gene belongs
+#'     to: `1` for the 13-gene block, `2` for the 58-gene block. Each block is
+#'     listed alphabetically in the figure, which is what makes the
+#'     transcription checkable: no gene is out of order within its block.}
+#'   \item{up_in}{Which reference group the gene is higher in, `"RAS"` for
+#'     block 1 and `"BRAF"` for block 2. Refitting the centroids on TCGA-THCA
+#'     recovers this split exactly: all 13 block-1 genes have a higher RAS
+#'     centroid and all 57 usable block-2 genes a higher BRAF centroid, with
+#'     no exceptions. That is an independent check on the gene list <U+2014> a
+#'     mis-transcribed symbol would land in the wrong block.}
 #' }
+#'
+#' @section Alias resolution:
+#' Four symbols in the 2014 figure are no longer the approved HGNC symbol:
+#' `FAM176A` (now `EVA1A`), `PVRL4` (`NECTIN4`), `TM7SF4` (`DCSTAMP`) and
+#' `ARNTL` (`BMAL1`). Expression matrices built from current GENCODE/HGNC
+#' annotation use the new symbols, so matching on `original_symbol` silently
+#' loses those genes. Use `current_symbol`, which is what [brs_fit()] does by
+#' default. Resolution was checked against `org.Hs.eg.db`; re-run
+#' `data-raw/check_symbols.R` when the annotation is updated.
 #'
 #' @source Agrawal N, Akbani R, Aksoy BA, et al. "Integrated Genomic
 #'   Characterization of Papillary Thyroid Carcinoma." Cell.
@@ -29,27 +48,52 @@
 #' brs_genes
 #' # Genes actually usable today (alias-resolved, FLJ23867 excluded):
 #' na.omit(brs_genes$current_symbol)
+#' # The two blocks of Figure S7A:
+#' table(brs_genes$block)
 #'
 #' @export
 brs_genes <- data.frame(
-  original_symbol = c(
-    "ANKRD46", "CYB561", "GNA14", "HGD", "KATNAL2", "KCNAB1", "KCNIP3", "LGI3", "MLEC", "NQO1",
-    "SFTPC", "SLC4A4", "SORBS2", "ABTB2", "AHR", "ANKLE2", "ANXA1", "ANXA2P2", "ARNTL", "ASAP2",
-    "BID", "CDC42EP1", "COL8A2", "CREB5", "CTSC", "CYP1B1", "DTX4", "DUSP5", "ETHE1", "FAM176A",
-    "FAM20C", "FCHO1", "FLJ23867", "FN1", "FSTL3", "GABRB2", "GBP2", "ITGA3", "ITGB8", "KCNN4",
-    "LAMB3", "LLGL1", "LY6E", "MDFIC", "MET", "PDE5A", "PDLIM4", "PLCD3", "PLEKHA6", "PNPLA5",
-    "PPL", "PRICKLE1", "PROS1", "PTPRE", "PVRL4", "RASGEF1B", "RUNX1", "RUNX2", "SDC4", "SEL1L3",
-    "SFTPB", "SLC35F2", "SOX4", "SPOCK2", "STK17B", "SYT12", "TACSTD2", "TBC1D2", "TGFBR1",
-    "TM7SF4", "TMEM43"
-  ),
-  stringsAsFactors = FALSE
+    original_symbol = c(
+        # Block 1 of Figure S7A (13 genes, alphabetical)
+        "ANKRD46", "CYB561", "GNA14", "HGD", "KATNAL2", "KCNAB1", "KCNIP3",
+        "LGI3", "MLEC", "NQO1", "SFTPC", "SLC4A4", "SORBS2",
+        # Block 2 of Figure S7A (58 genes, alphabetical)
+        "ABTB2", "AHR", "ANKLE2", "ANXA1", "ANXA2P2", "ARNTL", "ASAP2",
+        "BID", "CDC42EP1", "COL8A2", "CREB5", "CTSC", "CYP1B1", "DTX4",
+        "DUSP5", "ETHE1", "FAM176A", "FAM20C", "FCHO1", "FLJ23867", "FN1",
+        "FSTL3", "GABRB2", "GBP2", "ITGA3", "ITGB8", "KCNN4", "LAMB3",
+        "LLGL1", "LY6E", "MDFIC", "MET", "PDE5A", "PDLIM4", "PLCD3",
+        "PLEKHA6", "PNPLA5", "PPL", "PRICKLE1", "PROS1", "PTPRE", "PVRL4",
+        "RASGEF1B", "RUNX1", "RUNX2", "SDC4", "SEL1L3", "SFTPB", "SLC35F2",
+        "SOX4", "SPOCK2", "STK17B", "SYT12", "TACSTD2", "TBC1D2", "TGFBR1",
+        "TM7SF4", "TMEM43"
+    ),
+    block = rep(c(1L, 2L), c(13L, 58L)),
+    up_in = rep(c("RAS", "BRAF"), c(13L, 58L)),
+    stringsAsFactors = FALSE
 )
 
-.brs_alias_to_current <- c(FAM176A = "EVA1A", PVRL4 = "NECTIN4", TM7SF4 = "DCSTAMP")
+.brs_alias_to_current <- c(
+    ARNTL = "BMAL1",
+    FAM176A = "EVA1A",
+    PVRL4 = "NECTIN4",
+    TM7SF4 = "DCSTAMP"
+)
+
+# FLJ23867 resolves to no current symbol or alias, so it is marked NA and
+# brs_fit() drops it from the signature rather than looking for it in vain.
+.brs_unresolved <- "FLJ23867"
 
 brs_genes$current_symbol <- ifelse(
-  brs_genes$original_symbol %in% names(.brs_alias_to_current),
-  .brs_alias_to_current[brs_genes$original_symbol],
-  brs_genes$original_symbol
+    brs_genes$original_symbol %in% names(.brs_alias_to_current),
+    .brs_alias_to_current[brs_genes$original_symbol],
+    brs_genes$original_symbol
 )
-brs_genes$current_symbol[brs_genes$original_symbol == "FLJ23867"] <- NA_character_
+brs_genes$current_symbol[
+    brs_genes$original_symbol %in% .brs_unresolved
+] <- NA_character_
+
+brs_genes <- brs_genes[, c(
+    "original_symbol", "current_symbol", "block",
+    "up_in"
+)]

@@ -4,28 +4,42 @@
 \alias{brs_fit}
 \title{Fit BRAF-RAS Score (BRS) reference centroids}
 \usage{
-brs_fit(expr, labels, genes = NULL, log2_transform = FALSE)
+brs_fit(expr, labels, genes = NULL, log2_transform = FALSE, assay = NULL)
 }
 \arguments{
-\item{expr}{A numeric matrix of gene expression, features (genes) as rows
-and samples as columns. Row names must be gene symbols; column names
-must be sample identifiers. Expression should already be on a
-log-like scale (e.g. \code{log2(TPM + 1)}); see \code{log2_transform} if it isn't.}
+\item{expr}{Gene expression, features (genes) as rows and samples as
+columns: a numeric matrix, a
+\link[SummarizedExperiment:SummarizedExperiment-class]{SummarizedExperiment::SummarizedExperiment} or a
+\code{Biobase::ExpressionSet} (see \link{containers}). Row names must be gene
+symbols; column names must be sample identifiers. Expression should
+already be on a log-like scale (e.g. \code{log2(TPM + 1)}); see
+\code{log2_transform} if it isn't.}
 
-\item{labels}{A named character vector giving the reference class for
-the samples that have one. Names must match a subset of
-\code{colnames(expr)}; values must be \code{"Braf-like"} or \code{"Ras-like"} (samples
-with any other value, \code{NA}, or simply absent from \code{labels} are treated
-as unlabeled and excluded from centroid fitting, but can still be
-scored with \code{\link[=predict.brs_fit]{predict.brs_fit()}}).}
+\item{labels}{A named character vector giving the reference group for the
+samples that have one, or a single string naming a column of the
+object's \code{colData()}/\code{pData()}. Names must match a subset of
+\code{colnames(expr)}.
+Values naming the BRAF group (\code{"BRAF_V600E"}, \code{"BRAF"}, \code{"BRAF-like"},
+\code{"Braf-like"}) and the RAS group (\code{"RAS"}, \code{"RAS-like"}, \code{"Ras-like"})
+are recognised, case-insensitively. Samples with any other value, \code{NA},
+or simply absent from \code{labels} are treated as unlabeled and excluded from
+centroid fitting, but can still be scored with \code{\link[=predict.brs_fit]{predict.brs_fit()}}.}
 
 \item{genes}{Character vector of gene symbols to use as the signature.
-Defaults to the current, alias-resolved names in \link{brs_genes} (68 genes
-after excluding the ones that never occur in \code{expr}).}
+Defaults to the alias-resolved names in \link{brs_genes} (70 genes; \code{FLJ23867}
+has no current symbol and is excluded).}
 
-\item{log2_transform}{Logical. If \code{TRUE}, applies \code{log2(expr + 1)} to
-\code{expr} before fitting (use this if you are passing raw TPM/counts
-instead of already-transformed values). Default \code{FALSE}.}
+\item{log2_transform}{Logical. If \code{TRUE}, applies \code{log2(expr + 1)} to \code{expr}
+before fitting (use this if you are passing raw TPM/counts instead of
+already-transformed values). The choice is stored in the returned object
+and reused by \code{\link[=predict.brs_fit]{predict.brs_fit()}}, so the two can no longer disagree.
+Default \code{FALSE}.}
+
+\item{assay}{Name or index of the assay to use when \code{expr} is a
+\code{SummarizedExperiment}. Ignored otherwise. Defaults to the first assay,
+with a warning when there is more than one. For GDC data the first
+assay is raw counts, so use \code{assay = "tpm_unstranded"} with
+\code{log2_transform = TRUE}, or a normalized assay of your own.}
 }
 \value{
 An object of class \code{"brs_fit"}, a list with:
@@ -38,25 +52,47 @@ variance across the reference samples (uninformative for distance).}
 \item{gene_mean, gene_sd}{Per-gene mean/SD from the reference samples,
 used to z-score any sample later in \code{\link[=predict.brs_fit]{predict.brs_fit()}}.}
 \item{centroid_braf, centroid_ras}{Mean z-score profile of the
-BRAF-like and RAS-like reference samples.}
-\item{n_braf, n_ras}{Number of reference samples in each class.}
+BRAF-mutant and RAS-mutant reference samples.}
+\item{n_braf, n_ras}{Number of reference samples in each group.}
+\item{reference_samples}{Names of the samples used to fit, so that
+\code{\link[=validate_brs]{validate_brs()}} can tell resubstitution from real validation.}
+\item{log2_transform}{The scale the centroids were fitted on.}
 }
 }
 \description{
-Computes the two reference centroids (BRAF-mutant-like and RAS-mutant-like)
-needed to score the BRAF-RAS Score (BRS) of Agrawal et al. (2014), from a
-cohort where at least some samples have a known BRAF-mutant or RAS-mutant
-label. The original study needed exome sequencing to assign these labels,
-but that is only required once, to fit the centroids — scoring additional
-samples afterwards (\code{\link[=predict.brs_fit]{predict.brs_fit()}}) only needs their gene expression.
+Computes the two reference centroids (BRAF-mutant and RAS-mutant) needed to
+score the BRAF-RAS Score (BRS) of Agrawal et al. (2014), from a cohort where
+at least some samples have a known driver mutation. The original study
+needed exome sequencing to assign those labels, but that is only required
+once, to fit the centroids <U+2014> scoring additional samples afterwards
+(\code{\link[=predict.brs_fit]{predict.brs_fit()}}) only needs their gene expression.
 }
+\section{Which samples define the reference groups}{
+
+In Agrawal et al. the two reference sets are defined by \strong{driver mutation}:
+set B is the BRAF-V600E-mutant tumors and set R is the RAS-mutant tumors.
+They are \emph{not} the BRAF-like/RAS-like classes that the BRS itself produces.
+
+This distinction matters when working with the published TCGA-THCA tables.
+The column \code{BRAF_RAF_class} (also exposed by
+\code{TCGAbiolinks::TCGAquery_subtype()}) is exactly \code{sign(BRAF_RAF_score)}:
+it is the \emph{output} of the classifier.
+Fitting centroids on it is circular: it pulls 43 tumors with other drivers
+and 1 RAS-mutant tumor into the "BRAF" centroid, and 68 other-driver tumors
+into the "RAS" centroid. Use the mutation column (\code{BRAFV600E_RAS},
+restricted to \code{BRAF_V600E} and \code{RAS}) to fit, and keep \code{BRAF_RAF_class} /
+\code{BRAF_RAF_score} for validation. See \code{vignette("thyroidBRS")}.
+}
+
 \examples{
 set.seed(1)
 genes <- na.omit(brs_genes$current_symbol)[1:10]
 samples <- paste0("S", 1:20)
-expr <- matrix(rnorm(length(genes) * length(samples)), nrow = length(genes),
-               dimnames = list(genes, samples))
-labels <- setNames(rep(c("Braf-like", "Ras-like"), each = 8), samples[1:16])
+expr <- matrix(rnorm(length(genes) * length(samples)),
+    nrow = length(genes),
+    dimnames = list(genes, samples)
+)
+labels <- setNames(rep(c("BRAF_V600E", "RAS"), each = 8), samples[1:16])
 fit <- brs_fit(expr, labels, genes = genes)
 fit
 
