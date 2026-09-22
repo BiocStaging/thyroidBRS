@@ -1,13 +1,17 @@
 ---
 title: "Introduction to thyroidBRS"
-output: rmarkdown::html_vignette
+author: "Camila Barrios"
+package: thyroidBRS
+output:
+  BiocStyle::html_document:
+    toc_float: true
 vignette: >
   %\VignetteIndexEntry{Introduction to thyroidBRS}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
+```{r setup-knitr, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 ```
 
@@ -19,51 +23,112 @@ library(thyroidBRS)
 
 Papillary thyroid carcinoma (PTC) is predominantly driven by either a
 `BRAF`^V600E^ mutation or a RAS-family mutation. Agrawal et al. (2014)
-(*Cell*, [doi:10.1016/j.cell.2014.09.050](https://doi.org/10.1016/j.cell.2014.09.050))
-showed that these two driver groups have distinguishable transcriptional
-profiles, and defined the **BRAF-RAS Score (BRS)**: a continuous score from
--1 (most BRAF-like) to +1 (most RAS-like), computed from a 71-gene expression
-signature (their Figure S7A).
+(*Cell*,
+[doi:10.1016/j.cell.2014.09.050](https://doi.org/10.1016/j.cell.2014.09.050))
+showed that the two driver groups have distinguishable transcriptional
+profiles, and defined the **BRAF-RAS Score (BRS)** from a 71-gene signature
+(their Figure S7A).
 
-The original study only reported a BRS for the 391 (of 496) tumors that had
-**both** exome and RNA sequencing data — exome data was needed to define
-which tumors belonged to the BRAF-mutant reference group and which to the
-RAS-mutant reference group, but **not** to score a tumor once those two
-reference groups (and their expression centroids) are fixed. Any additional
-sample with RNA-seq expression data can be scored against those same
-centroids, with no mutation calling required.
+The study reported a BRS for the 391 tumors that had **both** exome and RNA
+sequencing — exome data was needed to say which tumors belonged to the
+BRAF-mutant reference group and which to the RAS-mutant one, but **not** to
+score a tumor once those groups and their centroids are fixed. Any additional
+sample with expression data can be scored against the same centroids.
 
 `thyroidBRS` implements exactly that two-step idea:
 
-1. **`brs_fit()`** — given a cohort with known BRAF-mutant/RAS-mutant labels
-   for at least some samples, computes the two reference centroids.
-2. **`predict()`** — scores *any* sample's expression against those
-   centroids, including samples that were never labeled.
+1. **`brs_fit()`** — given a cohort with known driver mutations for at least
+   some samples, computes the two reference centroids.
+2. **`predict()`** — scores *any* sample against those centroids, including
+   samples that were never labeled.
+
+## How the score is defined
+
+Extended Experimental Procedures 14.1 defines the score of a tumor `t` as the
+difference between its distance to the BRAF centroid `c(B)` and to the RAS
+centroid `c(R)`:
+
+$$\mathrm{BRS}(t) = \lVert v(t) - c(B) \rVert_2 - \lVert v(t) - c(R) \rVert_2$$
+
+where `v(t)` is the sample's expression across the signature, z-scored
+gene-by-gene against the reference cohort, and the norm is normalized by the
+number of genes. Negative scores are BRAF^V600E^-like, positive RAS-like.
+
+`predict()` returns two flavours of the same quantity:
+
+- `brs_score` — the value above. Stable per sample: it does not change when
+  you score a different set of samples against the same centroids.
+- `brs_scaled` — the same value rescaled so the scored set spans
+  $[-1, +1]$, which is the axis the published figures use. This is a property
+  of the *set*, so it moves if the cohort changes and is undefined for a
+  single sample.
+
+## What this reproduces
+
+This package is a re-implementation from the paper's description; the original
+code was never released. It reproduces the published *classification*, not the
+published numbers:
+
+| Compared against | Result |
+| --- | --- |
+| Driver-mutation status, 10-fold CV | 99.7% |
+| Published class labels, samples held out of the fit | 96.4% |
+| Published continuous score, Spearman | 0.941 |
+
+Expression pipelines have moved since 2014 (RSEM on hg19 then, STAR on
+GENCODE v36 now) and that difference is not reconstructable, so the scores
+this returns are close to but not the same as the ones in the 2014
+supplementary table. Classify and rank with them; do not expect them to match
+value for value.
+
+## Which samples define the reference groups
+
+This is the easiest thing to get wrong, so it is worth being explicit.
+
+In the paper, set B is the **BRAF-V600E-mutant** tumors and set R is the
+**RAS-mutant** tumors. The groups are defined by genotype.
+
+They are *not* the BRAF-like/RAS-like classes the BRS produces. In the
+published TCGA-THCA tables those are the column `BRAF_RAF_class`, which is
+exactly `sign(BRAF_RAF_score)` — the classifier's own output. Fitting
+centroids on it is circular, and it pulls tumors with other drivers into both
+reference groups: 43 other-driver tumors and 1 RAS-mutant tumor land in the
+"BRAF" group, and 68 other-driver tumors in the "RAS" group.
+
+On TCGA-THCA the two fits happen to end up close — the axes correlate at
+0.998 and only 2 of 505 tumors change class — so the practical damage is
+small there. The problem is what it does to the *evaluation*: if you fit on
+the published classes and then score the same samples, agreeing with them
+measures nothing.
+
+`brs_fit()` accepts either vocabulary, so nothing breaks if you have
+`"Braf-like"`/`"Ras-like"` labels, but prefer the mutation columns.
 
 ## A worked example
 
-`thyroidBRS` ships with the 71-gene signature ([brs_genes]) but not any real
-expression data (the underlying TCGA data is large and best fetched with
-`TCGAbiolinks` directly). This vignette instead uses a small simulated
-cohort so the example runs quickly and self-contained; the same calls work
-unchanged on real data.
+`thyroidBRS` ships the signature but no expression data. This example uses a
+small simulated cohort so it runs quickly; the same calls work unchanged on
+real data.
 
 ```{r simulate-data}
 set.seed(1)
 genes <- na.omit(brs_genes$current_symbol)
-samples <- paste0("sample_", 1:40)
+samples <- paste0("sample_", 1:60)
 
-# In real data this would be log2(TPM + 1) expression, genes x samples.
-expr <- matrix(
-  rnorm(length(genes) * length(samples)),
-  nrow = length(genes), dimnames = list(genes, samples)
-)
+# Two groups with a real difference across the signature, so the example
+# shows the classifier doing something rather than fitting noise.
+group <- rep(c("BRAF_V600E", "RAS", "unknown"), c(24, 12, 24))
+shift <- ifelse(brs_genes$up_in[!is.na(brs_genes$current_symbol)] == "RAS",
+                1, -1)
 
-# Simulate 24 samples with a known BRAF-mutant/RAS-mutant label...
-labels <- setNames(rep(c("Braf-like", "Ras-like"), each = 12), samples[1:24])
+expr <- matrix(rnorm(length(genes) * length(samples)),
+               nrow = length(genes), dimnames = list(genes, samples))
+expr <- expr + outer(shift, ifelse(group == "BRAF_V600E", -0.5, 0.5))
 
-# ...and 16 with expression only (as if their exome data were unavailable).
-unlabeled_samples <- samples[25:40]
+# Mutation labels for the 36 samples that have exome data...
+labels <- setNames(group[1:36], samples[1:36])
+# ...and 24 with expression only.
+unlabeled <- samples[37:60]
 ```
 
 ### Fit the reference centroids
@@ -73,26 +138,48 @@ fit <- brs_fit(expr, labels)
 fit
 ```
 
-### Score the labeled cohort, as a sanity check
-
-```{r validate}
-preds_labeled <- predict(fit, expr[, names(labels)])
-validate_brs(preds_labeled, labels)
-```
-
-With this simulated (random, unstructured) data, concordance will be close
-to chance — with a real, biologically-driven cohort like TCGA-THCA, the
-concordance against the published labels is 98.7% (386/391 samples; see
-`?brs_fit` and the package README for details on how that was measured).
-
 ### Score the previously-unlabeled samples
 
-This is the actual point of the package: extending classification beyond
-the original exome-sequenced cohort.
+This is the point of the package: extending classification beyond the
+exome-sequenced subset.
 
 ```{r classify-new}
-preds_new <- predict(fit, expr[, unlabeled_samples])
+preds_new <- predict(fit, expr[, unlabeled])
 head(preds_new)
+table(preds_new$brs_class)
+```
+
+### Check against the labels you do have
+
+```{r validate}
+preds_all <- predict(fit, expr)
+validate_brs(preds_all, labels, fit = fit)
+```
+
+Note the `n_resubstituted` field and the warning. Every one of those 36
+samples also defined the centroids, so this number is a resubstitution
+estimate, not a validation. It is a useful smoke test — if it is *not* high,
+something is wrong — but it is not evidence that the classifier generalizes.
+How optimistic is it? At the dimensions of the real TCGA analysis (70 genes,
+391 samples split 272/119), resubstitution on data with no signal whatsoever
+still lands around 68%.
+
+For a real estimate, hold samples out:
+
+```{r crossval}
+set.seed(2)
+fold <- sample(rep(1:4, length.out = length(labels)))
+cv <- character(length(labels))
+names(cv) <- names(labels)
+
+for (k in 1:4) {
+  f <- brs_fit(expr, labels[fold != k])
+  held <- names(labels)[fold == k]
+  cv[held] <- predict(f, expr[, held, drop = FALSE])$brs_class
+}
+
+truth <- ifelse(labels == "BRAF_V600E", "Braf-like", "Ras-like")
+mean(cv == truth)
 ```
 
 ### One-step alternative
@@ -105,23 +192,96 @@ all_preds <- brs_score(expr, labels)
 head(all_preds)
 ```
 
+## Expression containers
+
+`brs_fit()`, `predict()` and `brs_score()` also take a
+`SummarizedExperiment` or an `ExpressionSet`, so data from `TCGAbiolinks`
+or `GEOquery` goes in without unwrapping:
+
+```r
+se <- GDCprepare(q)                      # several assays
+fit <- brs_fit(se, "paper_BRAF.RAS", assay = "tpm_unstranded",
+               log2_transform = TRUE)
+```
+
+Two things to watch. Pick the assay explicitly — the first assay of a GDC
+object is raw counts, which is not what you want, and `brs_fit()` warns if
+you leave the choice to it. And `labels` may be given as a single string, in
+which case it is read as a column of `colData()` / `pData()`.
+
+## Microarray data, and what does not transfer
+
+The signature behaves well on microarrays. On GSE33630 (Affymetrix HG-U133
+Plus 2.0, 49 PTCs) 68 of the 70 genes are present, the first principal
+component of the signature accounts for 45% of the variance, and 67 of those
+68 genes load on it with the sign their Figure S7A block predicts. The
+biology is intact.
+
+What does not survive a platform change is the **zero threshold**. A
+`brs_fit` stores the per-gene means and SDs of the cohort it was fitted on;
+feed it data from a different platform and those recentre the samples
+somewhere else entirely. Scoring GSE33630 against TCGA RNA-seq centroids
+ranks the tumors essentially perfectly — Spearman 0.98 against the array's
+own signature axis — and then calls all 49 of them BRAF-like.
+
+So:
+
+- **Same platform and pipeline as the fit** — everything works, and the
+  frozen standardization is what makes the score robust. Scoring a cohort
+  that is 100% RAS-like still gets 97.5% of them right, because nothing about
+  the score depends on the composition of the set being scored.
+- **A different platform** — fit new centroids on that platform if you have
+  driver-mutation labels for it. If you do not, use `brs_score` as a
+  *ranking* and do not trust the class call. `predict()` warns when every
+  sample lands on the same side of zero, which is the usual symptom.
+
+Re-standardizing against the new cohort instead is tempting and does fix the
+cross-platform threshold, but it buys that by making every sample's score
+depend on the company it keeps: applied to a cohort that happens to be all
+RAS-like, it gets 8% of them right. That is why it is not the default.
+
 ## Using real TCGA data
 
-To reproduce the BRS on TCGA-THCA:
+`data-raw/validate_tcga.R` in the package sources runs the full reproduction.
+The shape of it:
 
 ```r
 library(TCGAbiolinks)
-# Download STAR - Counts RNA-seq for TCGA-THCA (Primary Tumor), build a
-# log2(TPM + 1) matrix keyed by gene symbol, one column per patient — see
-# your own preprocessing pipeline for the exact steps.
-#
-# Then pull the published BRAF_RAF_class as your reference labels:
-subtype_table <- TCGAquery_subtype(tumor = "thca")
-labels <- setNames(as.character(subtype_table$BRAF_RAF_class), subtype_table$patient)
-labels[trimws(labels) == ""] <- NA  # "" means unclassified in this table, not a real label
 
-fit <- brs_fit(expr, labels)
-preds <- predict(fit, expr)  # scores every patient, including previously-unclassified ones
+# 1. A log2(TPM + 1) matrix of primary tumors, gene symbols x patient barcode.
+q <- GDCquery(project = "TCGA-THCA",
+              data.category = "Transcriptome Profiling",
+              data.type = "Gene Expression Quantification",
+              workflow.type = "STAR - Counts")
+GDCdownload(q)
+se <- GDCprepare(q)
+# keep assay "tpm_unstranded", primary tumors (-01), collapse duplicated
+# gene symbols, then log2(x + 1)  ->  expr
+
+# 2. Reference labels: driver mutation, NOT the published class.
+ref <- read.csv(system.file("extdata", "thca_reference.csv",
+                            package = "thyroidBRS"))
+mut <- setNames(ref$driver_group, ref$patient)
+mut <- mut[mut %in% c("BRAF_V600E", "RAS")]
+
+# 3. Fit, then score everyone.
+fit <- brs_fit(expr, mut)
+preds <- predict(fit, expr)
+
+# 4. Validate against something that did not enter the fit.
+published <- setNames(ref$published_class, ref$patient)
+validate_brs(preds, published[!is.na(published)], fit = fit)
+```
+
+Doing this today scores 505 primary tumors — 114 more than the
+published 391 — and agrees with the published score at Spearman 0.941,
+with 96.4% class concordance on the 111 tumors that were not part of the
+reference groups.
+
+## Session info
+
+```{r session-info}
+sessionInfo()
 ```
 
 ## Reference
