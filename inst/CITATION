@@ -1,0 +1,30 @@
+citHeader(
+    "To cite thyroidBRS in publications, please cite both the package and",
+    "the study that defined the BRAF-RAS Score:"
+)
+
+bibentry(
+    bibtype  = "Manual",
+    title    = "thyroidBRS: BRAF-RAS Score (BRS) Classifier for Papillary Thyroid Carcinoma",
+    author   = person("Camila", "Barrios"),
+    year     = "2026",
+    note     = "R package version 0.99.0",
+    url      = "https://github.com/camilasauria/thyroidBRS"
+)
+
+bibentry(
+    bibtype  = "Article",
+    title    = "Integrated Genomic Characterization of Papillary Thyroid Carcinoma",
+    author   = "The Cancer Genome Atlas Research Network",
+    journal  = "Cell",
+    year     = "2014",
+    volume   = "159",
+    number   = "3",
+    pages    = "676--690",
+    doi      = "10.1016/j.cell.2014.09.050",
+    textVersion = paste(
+        "Agrawal N, Akbani R, Aksoy BA, et al. (2014).",
+        "Integrated Genomic Characterization of Papillary Thyroid Carcinoma.",
+        "Cell, 159(3), 676-690. doi:10.1016/j.cell.2014.09.050"
+    )
+)
