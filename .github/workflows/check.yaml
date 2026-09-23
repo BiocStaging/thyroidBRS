@@ -1,0 +1,92 @@
+# Builds the package on the three platforms Bioconductor builds on, so a
+# break shows up on a push instead of in a release-cycle build report.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+name: R-CMD-check
+
+permissions: read-all
+
+jobs:
+  check:
+    runs-on: ${{ matrix.config.os }}
+
+    name: ${{ matrix.config.os }} (${{ matrix.config.r }})
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {os: ubuntu-latest,  r: 'release'}
+          - {os: macos-latest,   r: 'release'}
+          - {os: windows-latest, r: 'release'}
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The vignette is R Markdown, so pandoc has to be there before the
+      # check runs.
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ matrix.config.r }}
+          use-public-rspm: true
+
+      # pak reads biocViews from DESCRIPTION and enables the Bioconductor
+      # repositories on its own, which is how SummarizedExperiment, Biobase
+      # and BiocStyle get resolved.
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::rcmdcheck
+          needs: check
+
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          upload-snapshots: true
+          build_args: 'c("--no-manual")'
+
+  bioccheck:
+    runs-on: ubuntu-latest
+    name: BiocCheck
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: 'release'
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: bioc::BiocCheck
+          needs: check
+
+      # BiocCheck wants the built tarball, not the source directory.
+      - name: Build tarball
+        run: R CMD build .
+        shell: bash
+
+      - name: BiocCheck
+        run: |
+          tarball <- list.files(pattern = "[.]tar[.]gz$")[1]
+          res <- BiocCheck::BiocCheck(tarball)
+          cat(length(res$error), "errors,", length(res$warning), "warnings,",
+              length(res$note), "notes\n")
+          # Notes are expected and listed in the submission issue; errors and
+          # warnings are what Bioconductor refuses a package for.
+          if (length(res$error) || length(res$warning)) {
+              stop("BiocCheck is not clean")
+          }
+        shell: Rscript {0}

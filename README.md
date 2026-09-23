@@ -1,5 +1,9 @@
 # thyroidBRS
 
+<!-- badges: start -->
+[![R-CMD-check](https://github.com/camilasauria/thyroidBRS/actions/workflows/check.yaml/badge.svg)](https://github.com/camilasauria/thyroidBRS/actions/workflows/check.yaml)
+<!-- badges: end -->
+
 An R package that computes the **BRAF-RAS Score (BRS)** for papillary
 thyroid carcinoma (PTC) — a 71-gene expression signature that quantifies how
 much a tumor resembles a BRAF^V600E^-mutant or a RAS-mutant transcriptional
