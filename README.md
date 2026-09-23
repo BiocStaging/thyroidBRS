@@ -6,7 +6,7 @@
 
 An R package that computes the **BRAF-RAS Score (BRS)** for papillary
 thyroid carcinoma (PTC) — a 71-gene expression signature that quantifies how
-much a tumor resembles a BRAF^V600E^-mutant or a RAS-mutant transcriptional
+much a tumor resembles a BRAF<sup>V600E</sup>-mutant or a RAS-mutant transcriptional
 profile — following the description in:
 
 > Agrawal N, Akbani R, Aksoy BA, et al. Integrated Genomic Characterization
@@ -41,7 +41,7 @@ the difference between its normalized Euclidean distance to the two centroids:
 BRS(t) = ||v(t) - c(B)||₂ - ||v(t) - c(R)||₂
 ```
 
-Negative is BRAF^V600E^-like, positive is RAS-like. `predict()` returns both
+Negative is BRAF<sup>V600E</sup>-like, positive is RAS-like. `predict()` returns both
 this value (`brs_score`) and the version rescaled to [-1, +1] across the
 scored samples (`brs_scaled`), which is the axis the published figures use.
 The rescaling is a property of the *set* being scored, not of a sample on its

@@ -2,7 +2,7 @@
 # break shows up on a push instead of in a release-cycle build report.
 on:
   push:
-    branches: [main]
+    branches: [devel]
   pull_request:
   workflow_dispatch:
 
