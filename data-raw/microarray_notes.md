@@ -9,17 +9,19 @@ ground truth on the array side; the checks below are therefore internal.
 
 ## The signature is intact on the platform
 
-68 of the 70 usable signature genes are present (`ITGA3` and `RASGEF1B` were
-lost in the upstream filtering, not absent from the array). Across the 49
-tumors:
+67 of the 70 signature genes the centroids were fitted on are present on this
+matrix (`ITGA3` and `RASGEF1B` were lost in the upstream filtering, not absent
+from the array; a third drops out of the fit). Across the 49 tumors:
 
 | | |
 | --- | --- |
-| Variance of the signature explained by PC1 | 45.2% |
-| Genes whose PC1 loading sign matches their Figure S7A block | 67 / 68 |
+| Variance of the signature explained by PC1 | 44.9% |
+| Genes whose PC1 loading sign matches their Figure S7A block | 66 / 67 |
 | Mean correlation within block 1 | +0.284 |
 | Mean correlation within block 2 | +0.451 |
 | Mean correlation between blocks | -0.336 |
+
+`data-raw/portability.R` reproduces every figure on this page.
 
 The two-block structure that defines the BRS is fully present. The biology is
 not the problem.
@@ -65,5 +67,6 @@ why it stays the default.
   report classes. `predict()` warns when every sample lands on one side,
   which is the usual symptom of this situation.
 
-An explicit `standardize = c("reference", "cohort", "rank")` argument would
-make the trade-off selectable rather than implicit. It is not implemented.
+`standardize = c("reference", "cohort", "rank")` makes the trade-off
+selectable rather than implicit; `"reference"` stays the default for the
+reason the table above gives.

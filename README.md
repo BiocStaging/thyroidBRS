@@ -108,11 +108,27 @@ RAS-mutant tumors, then scoring all 505 primary tumors available today:
 | 10-fold CV against mutation status (n = 286) | 99.7% |
 | Patients scored | 505, of which 114 have no published BRS |
 
-The held-out and cross-validated figures are the meaningful ones. Concordance
-measured on the samples that *defined* the centroids is a resubstitution
-estimate with a large optimistic bias: at these dimensions, pure noise with no
-signal at all still resubstitutes at about 68%. `validate_brs()` reports how
-much of any comparison is resubstitution, and warns when all of it is.
+**Read these carefully, because none of them is a clean generalization
+estimate.**
+
+The 10-fold CV re-fits the centroids in each fold, but the *signature* does
+not move: those 71 genes were selected on these same TCGA BRAF/RAS tumors in
+2014. Gene selection sits outside the cross-validation loop, so 99.7% is
+optimistic in exactly the way this package criticizes resubstitution for
+being. Treat it as an upper bound.
+
+The 96.4% is the cleanest number here. Those 111 tumors carry drivers other
+than BRAF-V600E or RAS, so they entered neither the signature derivation nor
+the centroid fit. It still measures agreement with the original classifier
+rather than with a biological truth.
+
+Concordance on the samples that *defined* the centroids is resubstitution and
+carries a large optimistic bias: at these dimensions, pure noise with no signal
+at all still resubstitutes at about 68%. `validate_brs()` reports how much of
+any comparison is resubstitution, and warns when all of it is.
+
+A genuinely independent estimate needs a cohort that played no part in
+deriving the signature. See `data-raw/microarray_notes.md`.
 
 Reproduce with `data-raw/validate_tcga.R`.
 

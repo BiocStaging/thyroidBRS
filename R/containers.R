@@ -13,11 +13,16 @@
 #' An `ExpressionSet` has a single `exprs()` matrix and ignores `assay`.
 #'
 #' @section Labels from the object:
-#' When `labels` is a single character string it is looked up as a column of
-#' `colData()` (or `pData()`), so
-#' `brs_fit(se, "paper_BRAF.RAS")` works directly on a
-#' `SummarizedExperiment` from `TCGAbiolinks`. Sample names come from
-#' `colnames()`.
+#' When `labels` is a bare character string of length one it is looked up as a
+#' column of `colData()` (or `pData()`), so `brs_fit(se, "driver_mutation")`
+#' works directly on an object that carries its own sample annotation. Sample
+#' names come from `colnames()`. A *named* vector of length one is a label for
+#' one sample, not a column name.
+#'
+#' Whichever column you name, it has to hold driver-mutation status. On
+#' TCGA-THCA the column giving the published BRAF-like/RAS-like class is the
+#' classifier's own output, and fitting on it is circular; see the warning in
+#' [brs_fit()].
 #'
 #' @section Microarray data:
 #' Microarray expression works as input: the signature is well represented
@@ -100,7 +105,11 @@ NULL
 
 # `labels` given as a column name: pull it off colData()/pData().
 .labels_from_object <- function(x, labels) {
-    if (!is.character(labels) || length(labels) != 1L) {
+    # A single string means "look this up as a colData()/pData() column", but
+    # only when it is bare: a named vector of length one is a label for one
+    # sample, and reading it as a column name is how that used to fail.
+    if (!is.character(labels) || length(labels) != 1L ||
+        !is.null(names(labels))) {
         return(labels)
     }
     if (is.matrix(x)) {

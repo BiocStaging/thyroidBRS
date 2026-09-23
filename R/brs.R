@@ -4,7 +4,7 @@
 #' score the BRAF-RAS Score (BRS) of Agrawal et al. (2014), from a cohort where
 #' at least some samples have a known driver mutation. The original study
 #' needed exome sequencing to assign those labels, but that is only required
-#' once, to fit the centroids <U+2014> scoring additional samples afterwards
+#' once, to fit the centroids. Scoring additional samples afterwards
 #' ([predict.brs_fit()]) only needs their gene expression.
 #'
 #' @section Which samples define the reference groups:
@@ -125,7 +125,7 @@ brs_fit <- function(expr, labels, genes = NULL, log2_transform = FALSE,
     if (is.null(genes)) {
         genes <- .resolve_signature(rownames(expr))
     } else {
-        genes <- unique(as.character(genes))
+        genes <- unique(stats::na.omit(as.character(genes)))
     }
     expr <- .drop_duplicate_rows(expr, genes)
 
@@ -153,9 +153,18 @@ brs_fit <- function(expr, labels, genes = NULL, log2_transform = FALSE,
     gene_mean <- rowMeans(ref_expr)
     gene_sd <- apply(ref_expr, 1, stats::sd)
 
-    flat <- names(gene_sd)[gene_sd == 0 | is.na(gene_sd)]
-    if (length(flat) > 0) {
-        keep <- setdiff(rownames(ref_expr), flat)
+    incomplete <- names(gene_sd)[is.na(gene_sd)]
+    if (length(incomplete) > 0) {
+        warning(length(incomplete), " signature gene(s) have missing values ",
+                "in the reference samples and were dropped: ",
+                .truncate(incomplete),
+                ". A single NA removes the gene for every sample.",
+                call. = FALSE)
+    }
+    flat <- names(gene_sd)[!is.na(gene_sd) & gene_sd == 0]
+    drop <- union(flat, incomplete)
+    if (length(drop) > 0) {
+        keep <- setdiff(rownames(ref_expr), drop)
         if (length(keep) == 0) {
             stop("Every signature gene has zero variance (or is all NA) ",
                 "across the reference samples.",
@@ -265,6 +274,7 @@ predict.brs_fit <- function(object, newdata, log2_transform = NULL,
     if (.resolve_scale(object, log2_transform)) newdata <- .log2p1(newdata)
 
     newdata <- .drop_duplicate_rows(newdata, object$genes_used)
+    newdata <- .match_alias_rows(newdata, object$genes_used)
 
     missing_genes <- setdiff(object$genes_used, rownames(newdata))
     if (length(missing_genes) > 0) {
@@ -281,6 +291,7 @@ predict.brs_fit <- function(object, newdata, log2_transform = NULL,
     st <- .standardize(m, object, standardize)
     z <- st$z
     g <- st$genes
+    if (standardize == "reference") .warn_if_offscale(z)
 
     # Normalized Euclidean distance: the L2 norm divided by sqrt(p), so the
     # score does not depend on how many signature genes survived.
@@ -516,6 +527,23 @@ print.brs_fit <- function(x, ...) {
     log2_transform
 }
 
+# Reference standardization subtracts the fit's per-gene mean and divides by
+# its SD, so if `newdata` is on a different scale the z-scores blow up. A
+# model fitted on log2 values and handed raw TPM gives a median |z| around 27
+# and classifies confidently and wrongly, with nothing else to give it away.
+.warn_if_offscale <- function(z, limit = 5) {
+    typical <- stats::median(abs(z), na.rm = TRUE)
+    if (is.finite(typical) && typical > limit) {
+        warning("The typical signature gene in `newdata` sits ",
+                round(typical, 1), " SDs from the reference mean. `newdata` ",
+                "is probably not on the scale `object` was fitted on ",
+                "(raw counts or TPM against log2 values, say). Check ",
+                "`log2_transform`, or re-fit on the same pipeline.",
+                call. = FALSE)
+    }
+    invisible(typical)
+}
+
 # Flag the two situations that usually mean the scores cannot be trusted.
 .warn_about_scores <- function(score) {
     scored <- score[!is.na(score)]
@@ -554,6 +582,45 @@ print.brs_fit <- function(x, ...) {
             call. = FALSE
         )
     }
+    if (anyDuplicated(colnames(expr))) {
+        warning(
+            "Duplicated sample identifiers in colnames; the output will ",
+            "repeat them: ",
+            .truncate(unique(colnames(expr)[duplicated(colnames(expr))])),
+            call. = FALSE
+        )
+    }
+}
+
+# A fit made on one annotation vintage should still score a matrix built on
+# the other. brs_fit() resolves the spelling once; predict() has to follow,
+# or a model fitted on GENCODE v36 (ARNTL) rejects a current matrix (BMAL1).
+.match_alias_rows <- function(mat, needed) {
+    missing <- setdiff(needed, rownames(mat))
+    if (!length(missing)) {
+        return(mat)
+    }
+
+    partner <- c(
+        stats::setNames(brs_genes$original_symbol, brs_genes$current_symbol),
+        stats::setNames(brs_genes$current_symbol, brs_genes$original_symbol)
+    )
+    partner <- partner[!is.na(names(partner)) & !is.na(partner)]
+
+    alt <- partner[missing]
+    usable <- !is.na(alt) & alt %in% rownames(mat) & !(alt %in% needed)
+    if (!any(usable)) {
+        return(mat)
+    }
+
+    from <- unname(alt[usable])
+    to <- missing[usable]
+    rownames(mat)[match(from, rownames(mat))] <- to
+    message(
+        length(to), " signature gene(s) matched under the other symbol ",
+        "spelling: ", paste(from, "->", to, collapse = ", ")
+    )
+    mat
 }
 
 .check_flag <- function(x, name) {
@@ -594,7 +661,15 @@ print.brs_fit <- function(x, ...) {
     names(out) <- names(labels)
 
     out <- out[!is.na(out)]
-    out <- out[names(out) %in% samples]
+    matched <- names(out) %in% samples
+    if (any(!matched)) {
+        warning(sum(!matched), " of ", length(out), " labelled sample(s) do ",
+                "not appear in ", what, " and were ignored: ",
+                .truncate(names(out)[!matched]),
+                ". Mismatched identifiers (a barcode against a patient ID, ",
+                "say) look exactly like this.", call. = FALSE)
+    }
+    out <- out[matched]
     if (length(out) == 0) {
         stop("No reference samples found: `labels` must name samples in ",
             what, " with a value identifying the BRAF group (e.g. ",
@@ -658,6 +733,9 @@ print.brs_fit <- function(x, ...) {
 .rescale_brs <- function(score) {
     out <- rep(NA_real_, length(score))
     ok <- !is.na(score)
+    # With a single sample there is no set to rescale against: dividing the
+    # value by itself would report +-1 for any input at all.
+    if (sum(ok) < 2L) return(out)
     neg <- ok & score < 0
     pos <- ok & score > 0
     out[ok & score == 0] <- 0

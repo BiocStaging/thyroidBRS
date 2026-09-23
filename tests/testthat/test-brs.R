@@ -164,8 +164,11 @@ test_that("zero-variance genes in the reference are dropped, not fatal", {
 test_that("brs_fit errors when no reference labels match", {
     cohort <- make_synthetic_cohort()
     bad <- setNames(cohort$labels, paste0("nope_", names(cohort$labels)))
+    # The mismatch warning fires first; the error is what this asserts.
     expect_error(
-        brs_fit(cohort$expr, bad, genes = rownames(cohort$expr)),
+        suppressWarnings(
+            brs_fit(cohort$expr, bad, genes = rownames(cohort$expr))
+        ),
         "No reference samples"
     )
 })
@@ -206,7 +209,11 @@ test_that("overriding log2_transform against the fitted scale warns", {
         log2_transform = TRUE
     )
 
-    expect_warning(predict(fit, tpm, log2_transform = FALSE), "disagrees")
+    # Two warnings fire here: the flag disagrees with the fit, and the data
+    # is consequently off-scale. Assert the first without tripping on the
+    # second.
+    w <- capture_warnings(predict(fit, tpm, log2_transform = FALSE))
+    expect_match(w, "disagrees", all = FALSE)
 })
 
 ## ---- B2: a single reference class -------------------------------------
@@ -264,19 +271,23 @@ test_that("duplicated signature rows warn and resolve to the first", {
 
 ## ---- B6: empate exacto ------------------------------------------------
 
-test_that("a score of exactly zero is classified as Ras-like", {
+test_that("the class boundary puts zero on the Ras-like side", {
+    # An exact tie cannot be manufactured through predict() portably: on a
+    # platform without long double (macOS arm64) the midpoint between the
+    # centroids accumulates to 2.2e-16 rather than 0, so the tie never
+    # happens and the rescaling then divides that residue by itself. Assert
+    # the rule and the rescaling directly instead.
+    expect_identical(.rescale_brs(c(-2, 0, 3)), c(-1, 0, 1))
+    # A lone value has no set to rescale against, so it is NA, not 0.
+    expect_identical(.rescale_brs(0), NA_real_)
+
     cohort <- make_synthetic_cohort()
     fit <- brs_fit(cohort$expr, cohort$labels, genes = rownames(cohort$expr))
-
-    # Exact midpoint between the two centroids.
-    midpoint <- (fit$centroid_braf + fit$centroid_ras) / 2
-    tie <- as.matrix(midpoint * fit$gene_sd + fit$gene_mean)
-    colnames(tie) <- "tie"
-
-    preds <- predict(fit, tie)
-    expect_equal(preds$brs_score, 0)
-    expect_equal(preds$brs_class, "Ras-like")
-    expect_equal(preds$brs_scaled, 0)
+    preds <- predict(fit, cohort$expr)
+    expect_identical(
+        preds$brs_class,
+        ifelse(preds$brs_score < 0, "Braf-like", "Ras-like")
+    )
 })
 
 test_that("the signature resolves against either annotation vintage", {
@@ -473,4 +484,90 @@ test_that("brs_score passes standardize through", {
                         genes = rownames(cohort$expr)),
                 cohort$expr, standardize = "cohort")
     )
+})
+
+## ---- findings from the macOS audit -------------------------------------
+
+test_that("expression on the wrong scale is flagged", {
+    cohort <- make_synthetic_cohort()
+    tpm <- 2^cohort$expr - 1
+    fit <- brs_fit(cohort$expr, cohort$labels, genes = rownames(cohort$expr))
+
+    # Fitted on log2 values, handed raw TPM: the flag is consistent, only the
+    # data is not, so nothing else catches it.
+    expect_warning(predict(fit, tpm), "SDs from the reference mean")
+    expect_silent(predict(fit, cohort$expr))
+})
+
+test_that("labels that do not match colnames are reported", {
+    cohort <- make_synthetic_cohort()
+    bad <- cohort$labels
+    scrambled <- c(1:25, 31:55)
+    names(bad)[scrambled] <- paste0(names(bad)[scrambled], "-01A")
+
+    expect_warning(brs_fit(cohort$expr, bad, genes = rownames(cohort$expr)),
+                   "do not appear in")
+})
+
+test_that("a gene with a missing value is not called zero-variance", {
+    cohort <- make_synthetic_cohort()
+    cohort$expr["GENE1", names(cohort$labels)[1]] <- NA
+
+    expect_warning(
+        fit <- brs_fit(cohort$expr, cohort$labels,
+                       genes = rownames(cohort$expr)),
+        "missing values"
+    )
+    expect_false("GENE1" %in% fit$genes_used)
+    expect_false("GENE1" %in% fit$genes_zero_variance)
+})
+
+test_that("predict resolves the other symbol spelling", {
+    set.seed(2)
+    v36 <- brs_genes$original_symbol[!is.na(brs_genes$current_symbol)]
+    modern <- na.omit(brs_genes$current_symbol)
+    samples <- paste0("S", 1:40)
+    labels <- setNames(rep(c("BRAF_V600E", "RAS"), each = 20), samples)
+    mk <- function(rn) {
+        matrix(rnorm(length(rn) * 40, 5), length(rn), 40,
+               dimnames = list(rn, samples))
+    }
+
+    fit <- brs_fit(mk(v36), labels)
+    expect_true("ARNTL" %in% fit$genes_used)
+    expect_message(preds <- predict(fit, mk(modern)), "other symbol spelling")
+    expect_equal(nrow(preds), 40L)
+})
+
+test_that("brs_scaled is undefined for a single sample", {
+    cohort <- make_synthetic_cohort()
+    fit <- brs_fit(cohort$expr, cohort$labels, genes = rownames(cohort$expr))
+
+    one <- predict(fit, cohort$expr[, 1, drop = FALSE])
+    expect_true(is.na(one$brs_scaled))
+    expect_false(is.na(one$brs_score))
+})
+
+test_that("duplicated sample identifiers are reported", {
+    cohort <- make_synthetic_cohort()
+    fit <- brs_fit(cohort$expr, cohort$labels, genes = rownames(cohort$expr))
+
+    dup <- cohort$expr[, c(1, 1, 2, 3)]
+    expect_warning(predict(fit, dup), "Duplicated sample identifiers")
+})
+
+test_that("a named length-1 label vector is not read as a column name", {
+    cohort <- make_synthetic_cohort()
+    one <- cohort$labels[1]
+    expect_true(!is.null(names(one)))
+    # It is too small to fit with, but it must fail for that reason.
+    expect_error(brs_fit(cohort$expr, one, genes = rownames(cohort$expr)),
+                 "at least 2 samples")
+})
+
+test_that("NA in the requested gene set is ignored, not reported missing", {
+    cohort <- make_synthetic_cohort()
+    genes <- c(rownames(cohort$expr), NA_character_)
+    fit <- brs_fit(cohort$expr, cohort$labels, genes = genes)
+    expect_length(fit$genes_missing, 0L)
 })

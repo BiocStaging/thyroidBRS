@@ -20,11 +20,16 @@ An \code{ExpressionSet} has a single \code{exprs()} matrix and ignores \code{ass
 
 \section{Labels from the object}{
 
-When \code{labels} is a single character string it is looked up as a column of
-\code{colData()} (or \code{pData()}), so
-\code{brs_fit(se, "paper_BRAF.RAS")} works directly on a
-\code{SummarizedExperiment} from \code{TCGAbiolinks}. Sample names come from
-\code{colnames()}.
+When \code{labels} is a bare character string of length one it is looked up as a
+column of \code{colData()} (or \code{pData()}), so \code{brs_fit(se, "driver_mutation")}
+works directly on an object that carries its own sample annotation. Sample
+names come from \code{colnames()}. A \emph{named} vector of length one is a label for
+one sample, not a column name.
+
+Whichever column you name, it has to hold driver-mutation status. On
+TCGA-THCA the column giving the published BRAF-like/RAS-like class is the
+classifier's own output, and fitting on it is circular; see the warning in
+\code{\link[=brs_fit]{brs_fit()}}.
 }
 
 \section{Microarray data}{

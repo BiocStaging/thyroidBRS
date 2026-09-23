@@ -25,7 +25,7 @@
 #'     block 1 and `"BRAF"` for block 2. Refitting the centroids on TCGA-THCA
 #'     recovers this split exactly: all 13 block-1 genes have a higher RAS
 #'     centroid and all 57 usable block-2 genes a higher BRAF centroid, with
-#'     no exceptions. That is an independent check on the gene list <U+2014> a
+#'     no exceptions. That is an independent check on the gene list: a
 #'     mis-transcribed symbol would land in the wrong block.}
 #' }
 #'

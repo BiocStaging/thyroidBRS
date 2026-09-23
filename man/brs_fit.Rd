@@ -64,7 +64,7 @@ Computes the two reference centroids (BRAF-mutant and RAS-mutant) needed to
 score the BRAF-RAS Score (BRS) of Agrawal et al. (2014), from a cohort where
 at least some samples have a known driver mutation. The original study
 needed exome sequencing to assign those labels, but that is only required
-once, to fit the centroids <U+2014> scoring additional samples afterwards
+once, to fit the centroids. Scoring additional samples afterwards
 (\code{\link[=predict.brs_fit]{predict.brs_fit()}}) only needs their gene expression.
 }
 \section{Which samples define the reference groups}{

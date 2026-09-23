@@ -20,7 +20,13 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Camila Barrios \email{paulacamilabarrioscervantes@gmail.com}
+\strong{Maintainer}: Hugo Tovar \email{hatovar@inmegen.gob.mx} (\href{https://orcid.org/0000-0002-8360-6133}{ORCID}) [copyright holder]
+
+Authors:
+\itemize{
+  \item Camila Barrios-Cervantes \email{paulacamilabarrioscervantes@gmail.com} (\href{https://orcid.org/0009-0006-9971-790X}{ORCID}) [copyright holder]
+  \item Daniel Pérez-Calixto \email{daniel_perez@ciencias.unam.mx} (\href{https://orcid.org/0009-0004-3988-1260}{ORCID}) [copyright holder]
+}
 
 }
 \keyword{internal}

@@ -1,6 +1,6 @@
 ---
 title: "Introduction to thyroidBRS"
-author: "Camila Barrios"
+author: "Camila Barrios-Cervantes, Daniel Pérez-Calixto, Hugo Tovar"
 package: thyroidBRS
 output:
   BiocStyle::html_document:
@@ -74,6 +74,14 @@ published numbers:
 | Driver-mutation status, 10-fold CV | 99.7% |
 | Published class labels, samples held out of the fit | 96.4% |
 | Published continuous score, Spearman | 0.941 |
+
+None of these is a clean generalization estimate. The cross-validation
+re-fits the centroids in each fold, but the signature does not move: those 71
+genes were selected on these same TCGA tumors, so gene selection sits outside
+the loop and 99.7% is an upper bound. The 96.4% is the cleanest figure, since
+those tumors carry other drivers and entered neither the signature derivation
+nor the fit. Both still measure agreement with the original classifier, not
+with a biological truth.
 
 Expression pipelines have moved since 2014 (RSEM on hg19 then, STAR on
 GENCODE v36 now) and that difference is not reconstructable, so the scores
@@ -200,8 +208,12 @@ or `GEOquery` goes in without unwrapping:
 
 ```r
 se <- GDCprepare(q)                      # several assays
-fit <- brs_fit(se, "paper_BRAF.RAS", assay = "tpm_unstranded",
-               log2_transform = TRUE)
+
+# colData() has to carry driver-mutation status. Whatever you name here, it
+# must not be the published BRAF-like/RAS-like class: that is the output of
+# this same classifier, and fitting on it is circular.
+colData(se)$driver <- mutation_status[colnames(se)]
+fit <- brs_fit(se, "driver", assay = "tpm_unstranded", log2_transform = TRUE)
 ```
 
 Two things to watch. Pick the assay explicitly — the first assay of a GDC
