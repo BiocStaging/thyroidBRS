@@ -146,4 +146,4 @@ depends on choices the paper leaves unspecified. See
 
 ## License
 
-MIT © Camila Barrios
+MIT © Camila Barrios-Cervantes, Daniel Pérez-Calixto and Hugo Tovar

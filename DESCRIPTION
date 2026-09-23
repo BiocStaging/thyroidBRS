@@ -4,15 +4,15 @@ Version: 0.99.0
 Authors@R: c(
     person("Camila", "Barrios-Cervantes",
            email = "paulacamilabarrioscervantes@gmail.com",
-           role = "aut",
+           role = c("aut", "cph"),
            comment = c(ORCID = "0009-0006-9971-790X")),
     person("Daniel", "Pérez-Calixto",
            email = "daniel_perez@ciencias.unam.mx",
-           role = "aut",
+           role = c("aut", "cph"),
            comment = c(ORCID = "0009-0004-3988-1260")),
     person("Hugo", "Tovar",
            email = "hatovar@inmegen.gob.mx",
-           role = c("aut", "cre"),
+           role = c("aut", "cre", "cph"),
            comment = c(ORCID = "0000-0002-8360-6133")))
 Description: Computes the BRAF-RAS Score (BRS), a 71-gene expression-based
     signature that quantifies whether a papillary thyroid carcinoma (PTC)
