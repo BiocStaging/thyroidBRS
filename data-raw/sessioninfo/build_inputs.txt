@@ -1,0 +1,63 @@
+script: build_inputs
+run on: 2026-09-23 10:00:36 CST
+
+R version 4.5.2 (2025-10-31)
+Platform: x86_64-conda-linux-gnu
+Running under: Ubuntu 26.04 LTS
+
+Matrix products: default
+BLAS/LAPACK: /scratch/home/hachepunto/miniforge/envs/bio/lib/libopenblasp-r0.3.30.so;  LAPACK version 3.12.0
+
+locale:
+ [1] LC_CTYPE=C.UTF-8       LC_NUMERIC=C           LC_TIME=C.UTF-8       
+ [4] LC_COLLATE=C.UTF-8     LC_MONETARY=C.UTF-8    LC_MESSAGES=C.UTF-8   
+ [7] LC_PAPER=C.UTF-8       LC_NAME=C              LC_ADDRESS=C          
+[10] LC_TELEPHONE=C         LC_MEASUREMENT=C.UTF-8 LC_IDENTIFICATION=C   
+
+time zone: America/Mexico_City
+tzcode source: system (glibc)
+
+attached base packages:
+[1] stats4    stats     graphics  grDevices utils     datasets  methods  
+[8] base     
+
+other attached packages:
+ [1] hgu133plus2cdf_2.18.0 GEOquery_2.78.0       hgu133plus2.db_3.13.0
+ [4] org.Hs.eg.db_3.22.0   AnnotationDbi_1.72.0  IRanges_2.44.0       
+ [7] S4Vectors_0.48.0      affy_1.88.0           Biobase_2.70.0       
+[10] BiocGenerics_0.56.0   generics_0.1.4        edgeR_4.8.2          
+[13] limma_3.66.0         
+
+loaded via a namespace (and not attached):
+ [1] KEGGREST_1.50.0             SummarizedExperiment_1.40.0
+ [3] httr2_1.2.2                 lattice_0.22-9             
+ [5] tzdb_0.5.0                  vctrs_0.7.1                
+ [7] tools_4.5.2                 curl_7.0.0                 
+ [9] tibble_3.3.1                RSQLite_2.4.6              
+[11] blob_1.3.0                  R.oo_1.27.1                
+[13] pkgconfig_2.0.3             Matrix_1.7-4               
+[15] data.table_1.18.2.1         rentrez_1.2.4              
+[17] lifecycle_1.0.5             compiler_4.5.2             
+[19] Biostrings_2.78.0           statmod_1.5.1              
+[21] Seqinfo_1.0.0               preprocessCore_1.72.0      
+[23] pillar_1.11.1               crayon_1.5.3               
+[25] tidyr_1.3.2                 R.utils_2.13.0             
+[27] DelayedArray_0.36.0         cachem_1.1.0               
+[29] abind_1.4-8                 tidyselect_1.2.1           
+[31] locfit_1.5-9.12             dplyr_1.2.0                
+[33] purrr_1.2.1                 fastmap_1.2.0              
+[35] grid_4.5.2                  cli_3.6.5                  
+[37] SparseArray_1.10.9          magrittr_2.0.4             
+[39] S4Arrays_1.10.1             XML_3.99-0.22              
+[41] withr_3.0.2                 readr_2.2.0                
+[43] rappdirs_0.3.4              bit64_4.6.0-1              
+[45] XVector_0.50.0              httr_1.4.8                 
+[47] affyio_1.80.0               matrixStats_1.5.0          
+[49] bit_4.6.0                   otel_0.2.0                 
+[51] R.methodsS3_1.8.2           png_0.1-9                  
+[53] hms_1.1.4                   memoise_2.0.1              
+[55] GenomicRanges_1.62.1        rlang_1.1.7                
+[57] glue_1.8.0                  DBI_1.3.0                  
+[59] BiocManager_1.30.27         xml2_1.5.2                 
+[61] jsonlite_2.0.0              R6_2.6.1                   
+[63] MatrixGenerics_1.22.0      

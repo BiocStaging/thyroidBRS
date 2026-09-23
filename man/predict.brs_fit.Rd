@@ -52,6 +52,34 @@ in \code{newdata}, using the centroids and per-gene mean/SD stored in \code{obje
 reference cohort used to fit those centroids, and do not need any
 mutation/exome information.
 }
+\section{Scoring data from another platform}{
+
+The centroids carry the per-gene mean and SD of the cohort they were
+fitted on. That is what makes a sample's score its own: it does not move
+when you score it alongside a different set of samples. It is also what
+breaks when \code{newdata} comes from another platform, because those means and
+SDs no longer describe it.
+
+Measured on GSE33630 (Affymetrix, 49 papillary carcinomas) against
+centroids fitted on TCGA RNA-seq: all three settings rank the tumors
+almost identically, at Spearman 0.97, 0.98 and 0.92 against the array's
+own signature axis, and they disagree completely on where zero falls.
+\code{"reference"} calls 49 of 49 BRAF-like; \code{"cohort"} calls 42 and 7.
+
+\code{"cohort"} and \code{"rank"} fix the threshold across platforms by paying for
+it elsewhere: each sample's score then depends on which samples it is
+scored with. Scoring TCGA subsets of different composition against the
+same centroids, \code{"reference"} gets 97.5\% to 99.6\% right whatever the class
+mix, while \code{"cohort"} drops to 8.4\% on a cohort that happens to be all
+RAS-like.
+
+So: score on the platform you fitted on and keep the default. Crossing
+platforms, prefer fitting new centroids there if you have driver-mutation
+labels. Failing that, use these settings for the \emph{ranking} and treat the
+class call as unreliable. \code{predict()} warns when every sample lands on the
+same side of zero, which is the usual symptom.
+}
+
 \section{How the score is computed}{
 
 Following Agrawal et al. (2014), Extended Experimental Procedures 14.1, the

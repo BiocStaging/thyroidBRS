@@ -97,6 +97,20 @@ if (nzchar(expr_path) && file.exists(expr_path)) {
     array_path <- Sys.getenv("GSE33630")
     if (nzchar(array_path) && file.exists(array_path)) {
         arr <- readRDS(array_path)
+
+        ## The array and the RNA-seq matrix are annotated against different
+        ## vintages -- BMAL1 here, ARNTL there -- so intersect on symbols
+        ## alone silently drops a signature gene. Translate first.
+        partner <- c(
+            setNames(brs_genes$original_symbol, brs_genes$current_symbol),
+            setNames(brs_genes$current_symbol, brs_genes$original_symbol)
+        )
+        partner <- partner[!is.na(names(partner)) & !is.na(partner)]
+        renameable <- rownames(arr) %in% names(partner) &
+            !(rownames(arr) %in% fit$genes_used) &
+            partner[rownames(arr)] %in% fit$genes_used
+        rownames(arr)[renameable] <- partner[rownames(arr)[renameable]]
+
         shared <- intersect(fit$genes_used, rownames(arr))
         arr <- arr[shared, ]
         message("\n4. GSE33630: ", length(shared), " of ",

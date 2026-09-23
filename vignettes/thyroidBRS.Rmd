@@ -224,16 +224,16 @@ which case it is read as a column of `colData()` / `pData()`.
 ## Microarray data, and what does not transfer
 
 The signature behaves well on microarrays. On GSE33630 (Affymetrix HG-U133
-Plus 2.0, 49 PTCs) 68 of the 70 genes are present, the first principal
-component of the signature accounts for 45% of the variance, and 67 of those
-68 genes load on it with the sign their Figure S7A block predicts. The
-biology is intact.
+Plus 2.0, 49 papillary carcinomas) all 70 usable genes are present, the first
+principal component of the signature accounts for 46% of the variance, and 68
+of those 70 genes load on it with the sign their Figure S7A block predicts.
+The biology is intact.
 
 What does not survive a platform change is the **zero threshold**. A
 `brs_fit` stores the per-gene means and SDs of the cohort it was fitted on;
 feed it data from a different platform and those recentre the samples
 somewhere else entirely. Scoring GSE33630 against TCGA RNA-seq centroids
-ranks the tumors essentially perfectly — Spearman 0.98 against the array's
+ranks the tumors essentially perfectly — Spearman 0.97 against the array's
 own signature axis — and then calls all 49 of them BRAF-like.
 
 So:

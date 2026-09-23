@@ -9,6 +9,15 @@
 ##   THCA_GDC=<dir> GSE33630_CEL=<dir> BUILD_OUT=<dir> \
 ##       Rscript data-raw/build_inputs.R
 ##
+## affy::rma() may die with "return code from pthread_create() is 22" while
+## background correcting. It is preprocessCore, not the BLAS -- limiting
+## OMP_NUM_THREADS does not help. Rebuild it without threading:
+##
+##   BiocManager::install("preprocessCore", type = "source", force = TRUE,
+##                        configure.args = "--disable-threading")
+##
+## The result is unchanged; only the threading is.
+##
 ## THCA_GDC       a GDCdownload() directory of TCGA-THCA "STAR - Counts"
 ## THCA_PREPARED  instead of the above, an .rds holding a GDCprepare(
 ##                summarizedExperiment = FALSE) data frame. Lets the build be
@@ -58,6 +67,13 @@
 ##    elsewhere and had lost ITGA3 and RASGEF1B to a filter nobody here
 ##    controlled; building from the CELs restores them, so the microarray
 ##    figures move slightly. That is the correct direction.
+##
+##    The series holds 105 arrays, not the 94 the earlier matrix had: 49
+##    papillary carcinomas, 11 anaplastic ones and 45 matched normals. The
+##    anaplastic samples are a different disease and scoring them as papillary
+##    would be wrong, so the diagnosis is read from the GEO sample annotation
+##    rather than guessed from file names, and the three groups are labelled
+##    in the output.
 
 suppressPackageStartupMessages({
     library(edgeR)
@@ -194,6 +210,7 @@ if (nzchar(cel_dir) && dir.exists(cel_dir)) {
     suppressPackageStartupMessages({
         library(affy)
         library(hgu133plus2.db)
+        library(GEOquery)
     })
     message("building GSE33630 from ", cel_dir)
 
@@ -219,8 +236,29 @@ if (nzchar(cel_dir) && dir.exists(cel_dir)) {
     rownames(arr) <- map$SYMBOL
     message("  ", nrow(arr), " symbols x ", ncol(arr), " arrays")
 
-    saveRDS(list(all = arr, probe_map = map), file.path(out_dir,
-                                                       "gse33630.rds"))
+    ## Which array is which disease comes from the series annotation, the
+    ## only place that records it.
+    series <- GEOquery::getGEO("GSE33630", GSEMatrix = TRUE, getGPL = FALSE)
+    pheno <- Biobase::pData(Biobase::phenoData(series[[1]]))
+    diagnosis <- as.character(pheno[["characteristics_ch1"]])
+    group <- ifelse(grepl("papillary", diagnosis, ignore.case = TRUE), "PTC",
+             ifelse(grepl("anaplastic", diagnosis, ignore.case = TRUE), "ATC",
+                    "normal"))
+    names(group) <- rownames(pheno)
+
+    stopifnot(
+        "every array should appear in the series annotation" =
+            all(colnames(arr) %in% names(group))
+    )
+    group <- group[colnames(arr)]
+    message("  ", paste(names(table(group)), table(group), sep = "=",
+                        collapse = "  "))
+
+    saveRDS(
+        list(all = arr, group = group, ptc = arr[, group == "PTC"],
+             probe_map = map),
+        file.path(out_dir, "gse33630.rds")
+    )
 } else {
     message("GSE33630_CEL not set; skipping the microarray matrix")
 }
