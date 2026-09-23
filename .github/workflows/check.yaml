@@ -79,10 +79,16 @@ jobs:
         run: R CMD build .
         shell: bash
 
+      # `no-check-bioc-help` skips the maintainer's support-site and
+      # mailing-list registration. That is a property of an account, not of
+      # the code: it cannot change between commits, Bioconductor verifies it
+      # on its own builds, and leaving it in makes this job depend on an
+      # external service. It went down three times in one morning and turned
+      # the build red each time with nothing wrong in the package.
       - name: BiocCheck
         run: |
           tarball <- list.files(pattern = "[.]tar[.]gz$")[1]
-          res <- BiocCheck::BiocCheck(tarball)
+          res <- BiocCheck::BiocCheck(tarball, `no-check-bioc-help` = TRUE)
           cat(length(res$error), "errors,", length(res$warning), "warnings,",
               length(res$note), "notes\n")
           # Notes are expected and listed in the submission issue; errors and
