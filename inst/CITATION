@@ -6,7 +6,9 @@ citHeader(
 bibentry(
     bibtype  = "Manual",
     title    = "thyroidBRS: BRAF-RAS Score (BRS) Classifier for Papillary Thyroid Carcinoma",
-    author   = person("Camila", "Barrios"),
+    author   = c(person("Camila", "Barrios-Cervantes"),
+                 person("Daniel", "Pérez-Calixto"),
+                 person("Hugo", "Tovar")),
     year     = "2026",
     note     = "R package version 0.99.0",
     url      = "https://github.com/camilasauria/thyroidBRS"
