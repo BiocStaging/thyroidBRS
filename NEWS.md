@@ -1,3 +1,20 @@
+# thyroidBRS 0.99.1
+
+* `inst/CITATION` is ASCII, so BiocCheck can read it: it calls
+  `readCitationFile()` without package metadata, which leaves a non-ASCII
+  character in an author's name with no declared encoding. This was the
+  `bioc-checks` WARNING on the first build report.
+* The package version in the citation is read from DESCRIPTION rather than
+  written out by hand.
+* `data-raw/` now builds every input matrix, the reference labels and the
+  expected outputs from their sources, and records `sessionInfo()` beside
+  each result. Addresses an independent reproducibility audit.
+* Corrected the README: the 111 tumors held out of the centroid fit were
+  described as carrying drivers other than BRAF-V600E or RAS, but 43 of them
+  carry no identified driver at all.
+* `predict()` gains `standardize`, choosing how `newdata` is put on the
+  centroids' scale when it comes from another platform.
+
 # thyroidBRS 0.99.0
 
 ## Breaking changes

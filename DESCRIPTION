@@ -1,6 +1,6 @@
 Package: thyroidBRS
 Title: BRAF-RAS Score (BRS) Classifier for Papillary Thyroid Carcinoma
-Version: 0.99.0
+Version: 0.99.1
 Authors@R: c(
     person("Camila", "Barrios-Cervantes",
            email = "paulacamilabarrioscervantes@gmail.com",
