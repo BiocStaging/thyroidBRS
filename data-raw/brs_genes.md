@@ -22,11 +22,18 @@ it from the publisher or from PMC if you want to re-check the transcription.
    order, in both row-clusters.
 2. **Block structure.** The figure has two row-clusters, each printed in
    alphabetical order: 13 genes (`ANKRD46` … `SORBS2`) and 58 genes (`ABTB2`
-   … `TMEM43`). Both runs are strictly sorted with no gene out of place, which
-   is what makes an omission or a misread detectable. `13 + 58 = 71` matches
-   the count stated in the figure legend. The two blocks move in opposite
-   directions between the BRAF-mutant and RAS-mutant groups; the `block`
-   column of `brs_genes` records the assignment.
+   … `TMEM43`), separated by a visible break in the heatmap. Both runs are
+   strictly sorted with no gene out of place, which is what makes an omission
+   or a misread detectable. `13 + 58 = 71` matches the count stated in the
+   figure legend. The `block` column of `brs_genes` records the assignment.
+
+   The panel carries no colour key, so the figure alone fixes which genes
+   group together but not which group they are higher in. It does show the
+   two blocks lighting up on opposite sides of the sample ordering, and
+   refitting the centroids on TCGA-THCA resolves the direction: every block-1
+   gene has the higher RAS centroid and every block-2 gene the higher BRAF
+   centroid. Figure and data agree, by independent routes, and the `up_in`
+   column records the result.
 3. **Symbol resolution** against `org.Hs.eg.db` — see `check_symbols.R` in
    this directory. Four symbols are stale (`ARNTL`→`BMAL1`,
    `FAM176A`→`EVA1A`, `PVRL4`→`NECTIN4`, `TM7SF4`→`DCSTAMP`); `FLJ23867`

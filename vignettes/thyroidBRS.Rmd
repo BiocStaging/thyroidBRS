@@ -288,7 +288,8 @@ validate_brs(preds, published[!is.na(published)], fit = fit)
 Doing this today scores 505 primary tumors — 114 more than the
 published 391 — and agrees with the published score at Spearman 0.941,
 with 96.4% class concordance on the 111 tumors that were not part of the
-reference groups.
+reference groups — tumors that are neither BRAF-V600E- nor RAS-mutant, and
+that were all exome sequenced.
 
 ## Session info
 

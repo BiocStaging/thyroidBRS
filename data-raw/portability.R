@@ -27,6 +27,7 @@ rownames(ref) <- ref$patient
 
 ## ---- 1. What resubstitution gives on data with no signal ---------------
 message("\n1. Resubstitution floor, 70 genes, 391 samples split 272/119")
+set.seed(1)
 floor_pct <- replicate(20, {
     genes <- paste0("G", 1:70)
     samples <- paste0("S", 1:391)

@@ -14,9 +14,15 @@
 ##
 ##   THCA_COUNTS=<counts.rds> Rscript data-raw/derive_signature.R
 ##
-## THCA_COUNTS must hold a list(counts = <raw gene counts, symbols x patient
-## barcode>, ann = <gene annotation>) built from the GDC "STAR - Counts"
-## files; see validate_tcga.R for how to fetch them.
+## THCA_COUNTS must hold the list that build_inputs.R writes:
+##
+##   counts  raw gene counts, gene symbols x patient barcode
+##   grp     named character vector of driver status, "BRAF_V600E" / "RAS"
+##   keep    gene symbols surviving filterByExpr, the universe to test
+##   coding  gene symbols that are protein-coding, for BRS_UNIVERSE=coding
+##
+## Following an earlier version of this header, which described a different
+## structure, left `groups` NULL and the script failed on the first draw.
 
 ## Assisted-by: Claude Opus 5 (Anthropic). See the Provenance section
 ## of README.md.
@@ -34,6 +40,11 @@ TOP_N <- 100L
 Q_CUT <- 0.01
 
 input <- readRDS(Sys.getenv("THCA_COUNTS", "thca_counts.rds"))
+stopifnot(
+    "THCA_COUNTS must be a list; see the header" = is.list(input),
+    "THCA_COUNTS needs `counts`, `grp` and `keep`; see the header" =
+        all(c("counts", "grp", "keep") %in% names(input))
+)
 counts <- input$counts
 groups <- input$grp
 universe <- input$keep

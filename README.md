@@ -117,10 +117,13 @@ not move: those 71 genes were selected on these same TCGA BRAF/RAS tumors in
 optimistic in exactly the way this package criticizes resubstitution for
 being. Treat it as an upper bound.
 
-The 96.4% is the cleanest number here. Those 111 tumors carry drivers other
-than BRAF-V600E or RAS, so they entered neither the signature derivation nor
-the centroid fit. It still measures agreement with the original classifier
-rather than with a biological truth.
+The 96.4% is the cleanest number here. Those 111 tumors are neither
+BRAF-V600E- nor RAS-mutant, so they entered neither the signature derivation
+nor the centroid fit — 58 carry a fusion driver, 10 another driver mutation,
+and 43 no identified driver at all. All 111 were exome sequenced; the 94
+tumors in the cohort that never were have no published BRS and are not in
+this set. It still measures agreement with the original classifier rather
+than with a biological truth.
 
 Concordance on the samples that *defined* the centroids is resubstitution and
 carries a large optimistic bias: at these dimensions, pure noise with no signal
