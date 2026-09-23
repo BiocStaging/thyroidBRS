@@ -56,11 +56,25 @@ if (write_mode) {
     message("wrote ", preds_file, " (", nrow(preds), " samples) and ",
             md5_file)
 } else {
-    if (!file.exists(preds_file)) {
+    if (!file.exists(preds_file) || !file.exists(md5_file)) {
         stop("No reference output yet; rerun with BRS_WRITE_EXPECTED=1.")
     }
     want <- read.csv(preds_file, stringsAsFactors = FALSE)
     want_md5 <- read.csv(md5_file, stringsAsFactors = FALSE)
+
+    ## Compare the same tumors, not the same row numbers. A GDC refresh or a
+    ## change to which aliquot represents a patient alters the sample set,
+    ## and comparing positionally would then contrast different tumors and
+    ## call it a pass -- in exactly the case this script exists to catch.
+    if (!identical(want$sample, preds$sample)) {
+        gone <- setdiff(want$sample, preds$sample)
+        new_s <- setdiff(preds$sample, want$sample)
+        stop("the sample set differs from the record: ",
+             length(gone), " missing, ", length(new_s), " new, ",
+             "order ", if (setequal(want$sample, preds$sample))
+                 "changed" else "aside", ". Rebuild the record if that is ",
+             "intended (BRS_WRITE_EXPECTED=1).")
+    }
 
     same_input <- isTRUE(all.equal(hashes$md5, want_md5$md5))
     if (!same_input) {

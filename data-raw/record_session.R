@@ -6,7 +6,9 @@
 ## to reproduce cannot be told apart from a number that was wrong.
 ##
 ## Each script in data-raw/ calls record_session() when it finishes, writing
-## data-raw/sessioninfo/<name>.txt. Those files are committed.
+## data-raw/sessioninfo/<name>.txt. The committed ones are from the runs that
+## produced the figures quoted in README.md and data-raw/*.md; a script that
+## has not been run since is simply absent, and writes its file when it is.
 
 record_session <- function(name) {
     dir <- file.path("data-raw", "sessioninfo")

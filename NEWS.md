@@ -1,3 +1,21 @@
+# thyroidBRS 0.99.2
+
+* Fixes from a code review of the reproducibility work. Two documented paths
+  did not run: `portability.R` expected a bare matrix where
+  `build_inputs.R` writes a list, and `derive_signature.R` defaulted to a
+  filename holding a different structure.
+* `expected_outputs.R` compared predictions by row position, so a changed
+  sample set would have been reported as identical -- the one case it exists
+  to catch. It now requires the same samples.
+* `build_inputs.R` asserts the GSE33630 group split. Without it a change to
+  the GEO annotation would have sent every array to "normal" and saved an
+  empty PTC matrix silently.
+* `inst/CITATION` no longer renders a version-less note when read without
+  package metadata.
+* Corrected an overstatement in `brs_genes.md`: the global block orientation
+  was defined from the same data it is checked against, so only the per-gene
+  agreement is a real result.
+
 # thyroidBRS 0.99.1
 
 * `inst/CITATION` is ASCII, so BiocCheck can read it: it calls
@@ -12,8 +30,6 @@
 * Corrected the README: the 111 tumors held out of the centroid fit were
   described as carrying drivers other than BRAF-V600E or RAS, but 43 of them
   carry no identified driver at all.
-* `predict()` gains `standardize`, choosing how `newdata` is put on the
-  centroids' scale when it comes from another platform.
 
 # thyroidBRS 0.99.0
 

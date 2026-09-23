@@ -10,7 +10,8 @@ bibentry(
                  person("Daniel", "P\u00e9rez-Calixto"),
                  person("Hugo", "Tovar")),
     year     = "2026",
-    note     = paste("R package version", meta$Version),
+    note     = paste("R package version",
+                     if (is.null(meta$Version)) "0.99.1" else meta$Version),
     url      = "https://github.com/camilasauria/thyroidBRS"
 )
 

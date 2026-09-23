@@ -20,10 +20,10 @@ All 70 usable signature genes are present. Across the 49 papillary tumors:
 | Mean correlation between blocks | -0.336 |
 
 These figures come from the matrix `data-raw/build_inputs.R` builds from the
-CEL files. An earlier version of this page reported 68 of 70 genes and 44.9%,
-measured on a matrix inherited from another pipeline that had dropped `ITGA3`
-and `RASGEF1B` in a filtering step nobody here controlled. Rebuilding recovers
-them.
+CEL files. An earlier version of this page reported 67 of 70 genes, 44.9% and
+66 of 67 sign-matching, measured on a matrix inherited from another pipeline
+that had dropped `ITGA3` and `RASGEF1B` in a filtering step nobody here
+controlled. Rebuilding recovers them.
 
 That rebuild surfaced something the inherited matrix had silently decided:
 the series holds **105 arrays, not 94** — 49 papillary carcinomas, 45 matched

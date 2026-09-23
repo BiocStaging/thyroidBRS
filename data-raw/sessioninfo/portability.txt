@@ -1,5 +1,5 @@
 script: portability
-run on: 2026-09-23 10:05:11 CST
+run on: 2026-09-23 12:37:27 CST
 
 R version 4.5.2 (2025-10-31)
 Platform: x86_64-conda-linux-gnu
@@ -21,7 +21,7 @@ attached base packages:
 [1] stats     graphics  grDevices utils     datasets  methods   base     
 
 other attached packages:
-[1] thyroidBRS_0.99.0 testthat_3.3.2   
+[1] thyroidBRS_0.99.1 testthat_3.3.2   
 
 loaded via a namespace (and not attached):
  [1] Matrix_1.7-4                compiler_4.5.2             

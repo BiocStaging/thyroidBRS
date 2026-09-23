@@ -248,7 +248,15 @@ if (nzchar(cel_dir) && dir.exists(cel_dir)) {
 
     stopifnot(
         "every array should appear in the series annotation" =
-            all(colnames(arr) %in% names(group))
+            all(colnames(arr) %in% names(group)),
+        ## Without this the whole series can fall through the ifelse chain to
+        ## "normal" -- if GEO moves the diagnosis to characteristics_ch1.1,
+        ## say -- leaving an empty PTC matrix that saves without complaint.
+        "the series should hold 49 PTC, 11 ATC and 45 normals" =
+            identical(as.integer(table(factor(group,
+                                              levels = c("ATC", "normal",
+                                                         "PTC")))),
+                      c(11L, 45L, 49L))
     )
     group <- group[colnames(arr)]
     message("  ", paste(names(table(group)), table(group), sep = "=",

@@ -32,8 +32,15 @@ it from the publisher or from PMC if you want to re-check the transcription.
    two blocks lighting up on opposite sides of the sample ordering, and
    refitting the centroids on TCGA-THCA resolves the direction: every block-1
    gene has the higher RAS centroid and every block-2 gene the higher BRAF
-   centroid. Figure and data agree, by independent routes, and the `up_in`
-   column records the result.
+   centroid. The `up_in` column records that.
+
+   Note what that check can and cannot show. `up_in` is a function of
+   `block`, and which block is which direction was itself read off the TCGA
+   centroids, so the *global* orientation cannot come out wrong — it was
+   defined from the same data it is compared against. What can fail, and
+   does not, is the per-gene agreement: a gene sitting in block 1 whose RAS
+   centroid were lower would break it, and none does. That is the part worth
+   quoting.
 3. **Symbol resolution** against `org.Hs.eg.db` — see `check_symbols.R` in
    this directory. Four symbols are stale (`ARNTL`→`BMAL1`,
    `FAM176A`→`EVA1A`, `PVRL4`→`NECTIN4`, `TM7SF4`→`DCSTAMP`); `FLJ23867`

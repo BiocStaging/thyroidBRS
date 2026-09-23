@@ -11,7 +11,8 @@
 ##       Rscript data-raw/portability.R
 ##
 ## THCA_LOG2TPM: log2(TPM + 1), gene symbols x TCGA patient barcode.
-## GSE33630: log2 RMA matrix of the PTC samples, gene symbols x GSM id.
+## GSE33630: what build_inputs.R writes as gse33630.rds, or a bare log2 RMA
+##            matrix of the PTC samples, gene symbols x GSM id.
 ## Either may be omitted; the sections that need it are then skipped.
 
 ## Assisted-by: Claude Opus 5 (Anthropic). See the Provenance section
@@ -97,6 +98,13 @@ if (nzchar(expr_path) && file.exists(expr_path)) {
     array_path <- Sys.getenv("GSE33630")
     if (nzchar(array_path) && file.exists(array_path)) {
         arr <- readRDS(array_path)
+        ## build_inputs.R writes a list; accept either that or a bare matrix.
+        if (is.list(arr)) {
+            if (!"ptc" %in% names(arr)) {
+                stop("GSE33630 must hold a matrix or a list with `ptc`.")
+            }
+            arr <- arr$ptc
+        }
 
         ## The array and the RNA-seq matrix are annotated against different
         ## vintages -- BMAL1 here, ARNTL there -- so intersect on symbols
@@ -110,6 +118,12 @@ if (nzchar(expr_path) && file.exists(expr_path)) {
             !(rownames(arr) %in% fit$genes_used) &
             partner[rownames(arr)] %in% fit$genes_used
         rownames(arr)[renameable] <- partner[rownames(arr)[renameable]]
+
+        if (anyDuplicated(rownames(arr))) {
+            stop("renaming aliases produced duplicated gene symbols: ",
+                 paste(unique(rownames(arr)[duplicated(rownames(arr))]),
+                       collapse = ", "))
+        }
 
         shared <- intersect(fit$genes_used, rownames(arr))
         arr <- arr[shared, ]

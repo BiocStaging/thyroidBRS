@@ -12,9 +12,9 @@
 ## This is the strongest available check on the gene list, which otherwise
 ## rests on a transcription of a heatmap figure.
 ##
-##   THCA_COUNTS=<counts.rds> Rscript data-raw/derive_signature.R
+##   THCA_COUNTS=<derive_input.rds> Rscript data-raw/derive_signature.R
 ##
-## THCA_COUNTS must hold the list that build_inputs.R writes:
+## THCA_COUNTS is derive_input.rds, the list build_inputs.R writes:
 ##
 ##   counts  raw gene counts, gene symbols x patient barcode
 ##   grp     named character vector of driver status, "BRAF_V600E" / "RAS"
@@ -48,7 +48,7 @@ if (.Platform$OS.type == "windows" && N_CORES > 1L) {
 TOP_N <- 100L
 Q_CUT <- 0.01
 
-input <- readRDS(Sys.getenv("THCA_COUNTS", "thca_counts.rds"))
+input <- readRDS(Sys.getenv("THCA_COUNTS", "derive_input.rds"))
 stopifnot(
     "THCA_COUNTS must be a list; see the header" = is.list(input),
     "THCA_COUNTS needs `counts`, `grp` and `keep`; see the header" =
