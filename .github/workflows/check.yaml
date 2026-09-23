@@ -2,7 +2,8 @@
 # break shows up on a push instead of in a release-cycle build report.
 on:
   push:
-    branches: [devel]
+    # Both, so CI keeps running either side of the rename to `devel`.
+    branches: [main, devel]
   pull_request:
   workflow_dispatch:
 
