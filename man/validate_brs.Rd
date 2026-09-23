@@ -4,7 +4,7 @@
 \alias{validate_brs}
 \title{Check BRS predictions against known labels}
 \usage{
-validate_brs(predictions, labels)
+validate_brs(predictions, labels, fit = NULL)
 }
 \arguments{
 \item{predictions}{A data frame as returned by \code{\link[=predict.brs_fit]{predict.brs_fit()}} /
@@ -12,26 +12,43 @@ validate_brs(predictions, labels)
 
 \item{labels}{A named character vector, as in \code{\link[=brs_fit]{brs_fit()}}. Only samples
 present in both \code{predictions$sample} and \code{names(labels)} are compared.}
+
+\item{fit}{Optionally the \code{"brs_fit"} used to produce \code{predictions}, so the
+overlap with its reference samples can be reported.}
 }
 \value{
-A list with \code{n}, \code{n_concordant}, \code{pct_concordant}, and the
-confusion \code{table} (published vs. predicted).
+A list with \code{n}, \code{n_concordant}, \code{pct_concordant}, \code{n_resubstituted}
+(samples that also defined the centroids, \code{NA} if \code{fit} was not given) and
+the confusion \code{table} (published vs. predicted).
 }
 \description{
-Compares \code{\link[=predict.brs_fit]{predict.brs_fit()}} output against a reference label vector —
-typically the same \code{labels} used to fit the model, as a sanity check that
-the fitted centroids reproduce the reference classes (concordance should
-be very high, since the reference samples define the centroids), but can
-also be any independent label vector.
+Compares \code{\link[=predict.brs_fit]{predict.brs_fit()}} output against a reference label vector.
 }
+\section{Resubstitution is not validation}{
+
+Passing the same \code{labels} that were used to fit the centroids measures how
+well a nearest-centroid rule reproduces the labels that \emph{defined} those
+centroids. That statistic is strongly optimistic: on 70 genes and 391
+samples split 272/119, pure noise with no signal at all still resubstitutes
+at about 68\%. Pass \code{fit} and this function will tell you how much of the
+comparison is resubstitution, and warn when all of it is.
+
+For a real check, compare against labels that did not enter the fit.
+For TCGA-THCA, fit on the mutation groups and validate against the
+published \code{BRAF_RAF_class} and \code{BRAF_RAF_score}.
+}
+
 \examples{
 set.seed(1)
 genes <- na.omit(brs_genes$current_symbol)[1:10]
 samples <- paste0("S", 1:20)
-expr <- matrix(rnorm(length(genes) * length(samples)), nrow = length(genes),
-               dimnames = list(genes, samples))
-labels <- setNames(rep(c("Braf-like", "Ras-like"), each = 8), samples[1:16])
-preds <- brs_score(expr, labels, genes = genes)
-validate_brs(preds, labels)
+expr <- matrix(rnorm(length(genes) * length(samples)),
+    nrow = length(genes),
+    dimnames = list(genes, samples)
+)
+labels <- setNames(rep(c("BRAF_V600E", "RAS"), each = 8), samples[1:16])
+fit <- brs_fit(expr, labels, genes = genes)
+preds <- predict(fit, expr)
+validate_brs(preds, labels, fit = fit)
 
 }

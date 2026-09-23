@@ -1,32 +1,56 @@
 Package: thyroidBRS
 Title: BRAF-RAS Score (BRS) Classifier for Papillary Thyroid Carcinoma
-Version: 0.1.0
-Authors@R:
-    person("Camila", "Barrios", email = "paulacamilabarrioscervantes@gmail.com", role = c("aut", "cre"))
+Version: 0.99.0
+Authors@R: c(
+    person("Camila", "Barrios-Cervantes",
+           email = "paulacamilabarrioscervantes@gmail.com",
+           role = c("aut", "cph"),
+           comment = c(ORCID = "0009-0006-9971-790X")),
+    person("Daniel", "Pérez-Calixto",
+           email = "daniel_perez@ciencias.unam.mx",
+           role = c("aut", "cph"),
+           comment = c(ORCID = "0009-0004-3988-1260")),
+    person("Hugo", "Tovar",
+           email = "hatovar@inmegen.gob.mx",
+           role = c("aut", "cre", "cph"),
+           comment = c(ORCID = "0000-0002-8360-6133")))
 Description: Computes the BRAF-RAS Score (BRS), a 71-gene expression-based
     signature that quantifies whether a papillary thyroid carcinoma (PTC)
     sample resembles a BRAF-V600E-mutant or a RAS-mutant transcriptional
-    profile, as described in Agrawal et al. (2014) <doi:10.1016/j.cell.2014.09.050>,
-    Extended Experimental Procedures, section 14.1. The original study only
+    profile, following Agrawal et al. (2014) <doi:10.1016/j.cell.2014.09.050>,
+    Extended Experimental Procedures, section 14.1. It is a re-implementation
+    from that description rather than the original code, which was never
+    released: it reproduces the published classification (99.7 percent against
+    driver-mutation status under cross-validation) but not the exact published
+    score values. The original study only
     scored the subset of samples for which both exome and RNA sequencing
     data were available, since exome data was needed to define the two
     reference groups (but not to score additional samples). This package
     lets you fit the reference centroids from any cohort with known
     BRAF-mutant/RAS-mutant labels and then score new samples — including
     ones with expression data only — using just their gene expression.
+    Expression can be supplied as a matrix, a SummarizedExperiment or an
+    ExpressionSet.
 License: MIT + file LICENSE
 Encoding: UTF-8
+biocViews: Software, Classification, GeneExpression, Transcriptomics,
+    RNASeq, Microarray, Sequencing, BiomedicalInformatics
 Roxygen: list(markdown = TRUE)
 Depends:
-    R (>= 4.1)
+    R (>= 4.5)
 Imports:
+    SummarizedExperiment,
+    methods,
     stats
 Suggests:
-    testthat (>= 3.0.0),
+    Biobase,
+    BiocStyle,
     knitr,
-    rmarkdown
+    rmarkdown,
+    testthat (>= 3.0.0)
 Config/testthat/edition: 3
 VignetteBuilder: knitr
 URL: https://github.com/camilasauria/thyroidBRS
 BugReports: https://github.com/camilasauria/thyroidBRS/issues
 Config/roxygen2/version: 8.1.0
+RoxygenNote: 7.3.3

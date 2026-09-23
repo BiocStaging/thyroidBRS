@@ -5,3 +5,6 @@
 inst/doc
 *.Rcheck/
 *.tar.gz
+
+# Material de referencia, no se distribuye (PDFs con copyright de Cell)
+paper/
