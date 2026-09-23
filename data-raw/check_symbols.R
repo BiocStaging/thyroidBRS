@@ -7,6 +7,8 @@
 ## of README.md.
 
 library(org.Hs.eg.db)
+
+source(file.path("data-raw", "record_session.R"))
 devtools::load_all(".", quiet = TRUE)
 
 approved <- AnnotationDbi::keys(org.Hs.eg.db, "SYMBOL")
@@ -53,3 +55,5 @@ stopifnot(
     !is.unsorted(brs_genes$original_symbol[brs_genes$block == 2L])
 )
 cat("\nShape invariants OK.\n")
+
+record_session("check_symbols")

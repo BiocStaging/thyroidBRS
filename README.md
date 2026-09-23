@@ -102,7 +102,7 @@ RAS-mutant tumors, then scoring all 505 primary tumors available today:
 | Comparison | Result |
 | --- | --- |
 | Spearman vs. published `BRAF_RAF_score` (n = 391) | 0.941 |
-| Pearson, rescaled to [-1, 1] (n = 391) | 0.986 |
+| Pearson, rescaled to [-1, 1] (n = 391) | 0.986 [^1] |
 | Class concordance, samples **held out** of the fit (n = 111) | 96.4% |
 | Class concordance, all 391 published samples | 99.0% |
 | 10-fold CV against mutation status (n = 286) | 99.7% |
@@ -132,6 +132,15 @@ any comparison is resubstitution, and warns when all of it is.
 
 A genuinely independent estimate needs a cohort that played no part in
 deriving the signature. See `data-raw/microarray_notes.md`.
+
+[^1]: `brs_scaled` is rescaled across whatever set is being scored, and the
+    published values were rescaled across the 391 tumors that had one. The
+    rescaling is linear within each sign but not across zero, so Pearson is
+    not invariant to it and the two are only comparable when both extremes
+    fall inside the shared subset. Here they do — the most negative and most
+    positive of all 505 tumors are both among the 391, so scoring 505 or 391
+    gives 0.986 either way — but that is a property of this cohort, not a
+    guarantee. Rescale over the shared subset before comparing elsewhere.
 
 Reproduce with `data-raw/validate_tcga.R`.
 

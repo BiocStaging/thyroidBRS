@@ -37,6 +37,8 @@ floor_pct <- replicate(20, {
     preds <- brs_score(expr, labels, genes = genes)
     suppressWarnings(validate_brs(preds, labels))$pct_concordant
 })
+
+source(file.path("data-raw", "record_session.R"))
 message("   mean ", round(mean(floor_pct), 1), "%  range ",
         paste(round(range(floor_pct), 1), collapse = " - "), "%")
 
@@ -136,3 +138,5 @@ if (nzchar(expr_path) && file.exists(expr_path)) {
 } else {
     message("\nTHCA_LOG2TPM not set; skipping sections 2-4")
 }
+
+record_session("portability")

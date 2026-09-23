@@ -34,8 +34,17 @@ suppressPackageStartupMessages({
 })
 library(thyroidBRS)
 
+source(file.path("data-raw", "record_session.R"))
+
 N_ITER <- as.integer(Sys.getenv("BRS_ITER", "200"))
+## mclapply() forks, so it does no work in parallel on Windows: set
+## BRS_CORES=1 there. The result does not depend on the core count -- each
+## iteration seeds from its own index -- only the wall clock does.
 N_CORES <- as.integer(Sys.getenv("BRS_CORES", "10"))
+if (.Platform$OS.type == "windows" && N_CORES > 1L) {
+    message("mclapply cannot fork on Windows; falling back to one core")
+    N_CORES <- 1L
+}
 TOP_N <- 100L
 Q_CUT <- 0.01
 
@@ -161,3 +170,5 @@ top_n_overlap(sens$freq, published)
 
 saveRDS(list(main = main, sens = sens, published = published),
         Sys.getenv("BRS_OUT", "derive_signature_result.rds"))
+
+record_session("derive_signature")

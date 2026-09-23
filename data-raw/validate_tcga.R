@@ -27,6 +27,8 @@
 
 library(thyroidBRS)
 
+source(file.path("data-raw", "record_session.R"))
+
 expr_path <- Sys.getenv("THCA_LOG2TPM", "thca_log2tpm.rds")
 if (!file.exists(expr_path)) {
     stop("Set THCA_LOG2TPM to a log2(TPM + 1) matrix; see the header.")
@@ -58,6 +60,11 @@ cat("\nAgreement with the published BRS (n = ", nrow(pub), ")\n", sep = "")
 cat("  Spearman vs BRAF_RAF_score   : ",
     round(cor(preds[i, "brs_score"], pub$published_brs,
               method = "spearman"), 4), "\n", sep = "")
+## brs_scaled is rescaled across the set being scored, and the published
+## values were rescaled across the 391 that had one. The rescaling is linear
+## within each sign but not across zero, so this comparison only holds while
+## both extremes fall inside the shared subset. They do here; check it before
+## carrying the number to another cohort.
 cat("  Pearson, rescaled            : ",
     round(cor(preds[i, "brs_scaled"], pub$published_brs), 4), "\n", sep = "")
 cat("  Class concordance, all       : ",
@@ -98,3 +105,5 @@ expected <- key[names(delta)]
 cat("\nOrientation matches Figure S7A for ",
     sum(ifelse(delta > 0, "RAS", "BRAF") == expected), " of ", length(delta),
     " genes\n", sep = "")
+
+record_session("validate_tcga")

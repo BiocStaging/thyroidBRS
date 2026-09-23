@@ -41,6 +41,8 @@
 
 suppressPackageStartupMessages(library(readxl))
 
+source(file.path("data-raw", "record_session.R"))
+
 mmc3 <- Sys.getenv("THCA_MMC3", "1-s2.0-S0092867414012380-mmc3.xlsx")
 if (!file.exists(mmc3)) {
     stop("Set THCA_MMC3 to the supplementary spreadsheet; see the header.")
@@ -92,3 +94,5 @@ message("  driver_group: ",
               sep = "=", collapse = "  "))
 message("  with a published BRS: ", sum(!is.na(ref$published_brs)))
 message("  exome sequenced: ", sum(ref$has_exome))
+
+record_session("build_reference")
