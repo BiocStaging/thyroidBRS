@@ -1,3 +1,9 @@
+# Provenance: substantial parts of this file were written by Claude Opus 5
+# (Anthropic) working from the published description of the method, under the
+# direction of and reviewed by the package authors, who are responsible for
+# its correctness and maintenance. See the Provenance section of README.md.
+# Assisted-by: Claude Opus 5 (Anthropic)
+
 #' Fit BRAF-RAS Score (BRS) reference centroids
 #'
 #' Computes the two reference centroids (BRAF-mutant and RAS-mutant) needed to

@@ -22,6 +22,9 @@
 ##   # keep assay "tpm_unstranded", primary tumors (-01), collapse duplicated
 ##   # symbols, then log2(x + 1).
 
+## Assisted-by: Claude Opus 5 (Anthropic). See the Provenance section
+## of README.md.
+
 library(thyroidBRS)
 
 expr_path <- Sys.getenv("THCA_LOG2TPM", "thca_log2tpm.rds")

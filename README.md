@@ -164,6 +164,32 @@ depends on choices the paper leaves unspecified. See
 `data-raw/signature_rederivation.md` for the full comparison, and
 `data-raw/brs_genes.md` for the provenance of the list.
 
+## Provenance
+
+Substantial parts of this package were written by **Claude Opus 5**
+(Anthropic), working from the published description of the method and under
+the direction of the authors, who reviewed the work and are responsible for
+its correctness and maintenance.
+
+Concretely, of the code in this repository: `R/containers.R` and everything
+under `data-raw/` were written by the model; `R/brs.R` grew from 275 to 755
+lines and its original content was rewritten; the test suite grew from 87 to
+573 lines; the vignette and README were largely rewritten. Nine of the ten
+commits carry `Co-Authored-By: Claude Opus 5`, so the attribution is visible
+per-commit in the git history and can be checked with `git log`.
+
+The work is the audit described in `NEWS.md`: the classifier's reference
+groups, score formula and eight silent failure modes were corrected against
+Agrawal et al. (2014), and the results were validated against TCGA-THCA. The
+findings of an independent review of that work, run on a second machine, are
+recorded in the commit `Fix what a macOS audit of this package found`.
+
+No code was copied from another software project. Under Anthropic's terms the
+authors own the output, so the contributed code is redistributable under this
+package's MIT licence.
+
+Assisted-by: Claude Opus 5 (Anthropic)
+
 ## License
 
 MIT © Camila Barrios-Cervantes, Daniel Pérez-Calixto and Hugo Tovar

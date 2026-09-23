@@ -18,6 +18,9 @@
 ## barcode>, ann = <gene annotation>) built from the GDC "STAR - Counts"
 ## files; see validate_tcga.R for how to fetch them.
 
+## Assisted-by: Claude Opus 5 (Anthropic). See the Provenance section
+## of README.md.
+
 suppressPackageStartupMessages({
     library(edgeR)
     library(limma)

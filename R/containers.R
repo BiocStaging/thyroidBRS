@@ -1,3 +1,9 @@
+# Provenance: substantial parts of this file were written by Claude Opus 5
+# (Anthropic) working from the published description of the method, under the
+# direction of and reviewed by the package authors, who are responsible for
+# its correctness and maintenance. See the Provenance section of README.md.
+# Assisted-by: Claude Opus 5 (Anthropic)
+
 #' Expression container support
 #'
 #' `brs_fit()`, `predict()` and `brs_score()` accept expression as a plain

@@ -14,6 +14,9 @@
 ## GSE33630: log2 RMA matrix of the PTC samples, gene symbols x GSM id.
 ## Either may be omitted; the sections that need it are then skipped.
 
+## Assisted-by: Claude Opus 5 (Anthropic). See the Provenance section
+## of README.md.
+
 library(thyroidBRS)
 
 ref <- read.csv(

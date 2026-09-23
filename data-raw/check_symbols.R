@@ -3,6 +3,9 @@
 ##
 ##   Rscript data-raw/check_symbols.R
 
+## Assisted-by: Claude Opus 5 (Anthropic). See the Provenance section
+## of README.md.
+
 library(org.Hs.eg.db)
 devtools::load_all(".", quiet = TRUE)
 
