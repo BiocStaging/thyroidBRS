@@ -43,9 +43,13 @@ test_that("brs_genes has the expected shape", {
 test_that("brs_genes records the two blocks of Figure S7A", {
     expect_equal(as.integer(table(brs_genes$block)), c(13L, 58L))
     # Each block is alphabetical in the figure: this is the check that the
-    # transcription lost no gene and reordered none.
-    expect_false(is.unsorted(brs_genes$original_symbol[brs_genes$block == 1L]))
-    expect_false(is.unsorted(brs_genes$original_symbol[brs_genes$block == 2L]))
+    # transcription lost no gene and reordered none. Compared against a radix
+    # sort, which orders in the C locale on every platform — is.unsorted()
+    # would compare in whatever collation the session happens to run under.
+    for (b in c(1L, 2L)) {
+        sym <- brs_genes$original_symbol[brs_genes$block == b]
+        expect_identical(sym, sort(sym, method = "radix"))
+    }
 })
 
 test_that("stale symbols are resolved, ARNTL included", {
