@@ -1,3 +1,11 @@
+# thyroidBRS 0.99.3
+
+* Added the `DriverMutation` biocView. The score is defined by resemblance to
+  two driver-mutation transcriptional profiles, so the term belongs; the
+  `SingleCell` term BiocCheck also suggested does not, as the package is bulk
+  only.
+* Declared the funder (`fnd`) in `Authors@R`.
+
 # thyroidBRS 0.99.2
 
 * Fixes from a code review of the reproducibility work. Two documented paths

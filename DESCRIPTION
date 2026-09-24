@@ -1,6 +1,6 @@
 Package: thyroidBRS
 Title: BRAF-RAS Score (BRS) Classifier for Papillary Thyroid Carcinoma
-Version: 0.99.2
+Version: 0.99.3
 Authors@R: c(
     person("Camila", "Barrios-Cervantes",
            email = "paulacamilabarrioscervantes@gmail.com",
@@ -13,7 +13,10 @@ Authors@R: c(
     person("Hugo", "Tovar",
            email = "hatovar@inmegen.gob.mx",
            role = c("aut", "cre", "cph"),
-           comment = c(ORCID = "0000-0002-8360-6133")))
+           comment = c(ORCID = "0000-0002-8360-6133")),
+    person("Instituto Nacional de Medicina Genómica", role = "fnd",
+           comment = c(ROR = "https://ror.org/01qjckx08",
+                       project = "INMEGEN-2026-14 (Proyecto 81)")))
 Description: Computes the BRAF-RAS Score (BRS), a 71-gene expression-based
     signature that quantifies whether a papillary thyroid carcinoma (PTC)
     sample resembles a BRAF-V600E-mutant or a RAS-mutant transcriptional
@@ -33,8 +36,8 @@ Description: Computes the BRAF-RAS Score (BRS), a 71-gene expression-based
     ExpressionSet.
 License: MIT + file LICENSE
 Encoding: UTF-8
-biocViews: Software, Classification, GeneExpression, Transcriptomics,
-    RNASeq, Microarray, Sequencing, BiomedicalInformatics
+biocViews: Software, Classification, DriverMutation, GeneExpression,
+    Transcriptomics, RNASeq, Microarray, Sequencing, BiomedicalInformatics
 Roxygen: list(markdown = TRUE)
 Depends:
     R (>= 4.5)
