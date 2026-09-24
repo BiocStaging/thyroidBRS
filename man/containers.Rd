@@ -3,6 +3,12 @@
 \name{containers}
 \alias{containers}
 \title{Expression container support}
+\value{
+This page documents the input containers the package accepts
+rather than a function of its own. Whichever container the expression
+arrives in, \code{\link[=brs_fit]{brs_fit()}} returns a \code{"brs_fit"} object and
+\code{\link[=predict.brs_fit]{predict.brs_fit()}} returns a data frame.
+}
 \description{
 \code{brs_fit()}, \code{predict()} and \code{brs_score()} accept expression as a plain
 numeric matrix, a \link[SummarizedExperiment:SummarizedExperiment-class]{SummarizedExperiment::SummarizedExperiment} or a
@@ -46,4 +52,3 @@ but the class call is not trustworthy; \code{predict()} warns when every sample
 lands on the same side, which is the usual symptom.
 }
 
-\keyword{internal}

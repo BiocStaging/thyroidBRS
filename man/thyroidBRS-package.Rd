@@ -28,5 +28,10 @@ Authors:
   \item Daniel Pérez-Calixto \email{daniel_perez@ciencias.unam.mx} (\href{https://orcid.org/0009-0004-3988-1260}{ORCID}) [copyright holder]
 }
 
+Other contributors:
+\itemize{
+  \item Instituto Nacional de Medicina Genómica (\href{https://ror.org/01qjckx08}{ROR}) (INMEGEN-2026-14 (Proyecto 81)) [funder]
+}
+
 }
 \keyword{internal}

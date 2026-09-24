@@ -50,6 +50,15 @@ the cohort changes.
 
 ## Installation
 
+Once the package is part of a Bioconductor release:
+
+```r
+# install.packages("BiocManager")
+BiocManager::install("thyroidBRS")
+```
+
+Until then, or to track development:
+
 ```r
 # install.packages("remotes")
 remotes::install_github("camilasauria/thyroidBRS")

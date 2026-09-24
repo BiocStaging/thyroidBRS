@@ -19,11 +19,16 @@ already be on a log-like scale (e.g. \code{log2(TPM + 1)}); see
 samples that have one, or a single string naming a column of the
 object's \code{colData()}/\code{pData()}. Names must match a subset of
 \code{colnames(expr)}.
-Values naming the BRAF group (\code{"BRAF_V600E"}, \code{"BRAF"}, \code{"BRAF-like"},
-\code{"Braf-like"}) and the RAS group (\code{"RAS"}, \code{"RAS-like"}, \code{"Ras-like"})
-are recognised, case-insensitively. Samples with any other value, \code{NA},
-or simply absent from \code{labels} are treated as unlabeled and excluded from
-centroid fitting, but can still be scored with \code{\link[=predict.brs_fit]{predict.brs_fit()}}.}
+Values are matched case-insensitively and after collapsing runs of
+non-alphanumeric characters, so \code{"BRAF V600E"}, \code{"BRAF-like"} and
+\code{"braf_like"} are equivalent. The BRAF group is named by \code{"BRAF_V600E"},
+\code{"BRAF"}, \code{"BRAF-like"}, \code{"BRAF-mutant"}, \code{"V600E"} or \code{"BVL"}; the RAS
+group by \code{"RAS"}, \code{"RAS-like"}, \code{"RAS-mutant"}, \code{"KRAS"}, \code{"NRAS"},
+\code{"HRAS"} or \code{"RL"}. Samples with any other value, \code{NA}, or simply absent
+from \code{labels} are treated as unlabeled and excluded from centroid
+fitting, but can still be scored with \code{\link[=predict.brs_fit]{predict.brs_fit()}}. An
+unrecognised value warns: a mis-specified label column otherwise looks
+exactly like a cohort that has unlabeled samples.}
 
 \item{genes}{Character vector of gene symbols to use as the signature.
 Defaults to the alias-resolved names in \link{brs_genes} (70 genes; \code{FLJ23867}
@@ -49,6 +54,10 @@ to fit the centroids.}
 \item{genes_missing}{Requested signature genes not found in \code{expr}.}
 \item{genes_zero_variance}{Genes dropped because they had zero
 variance across the reference samples (uninformative for distance).}
+\item{genes_missing_values}{Genes dropped because they had a missing
+value in at least one reference sample. Together with
+\code{genes_zero_variance} these account for every requested gene that
+was found but not used.}
 \item{gene_mean, gene_sd}{Per-gene mean/SD from the reference samples,
 used to z-score any sample later in \code{\link[=predict.brs_fit]{predict.brs_fit()}}.}
 \item{centroid_braf, centroid_ras}{Mean z-score profile of the
@@ -88,11 +97,20 @@ restricted to \code{BRAF_V600E} and \code{RAS}) to fit, and keep \code{BRAF_RAF_
 set.seed(1)
 genes <- na.omit(brs_genes$current_symbol)[1:10]
 samples <- paste0("S", 1:20)
+group <- rep(c("BRAF_V600E", "RAS"), each = 10)
+
+# Give the two groups the difference the signature is meant to detect, so
+# the example shows the classifier working rather than fitting noise.
+shift <- ifelse(
+    brs_genes$up_in[match(genes, brs_genes$current_symbol)] == "RAS", 1, -1
+)
 expr <- matrix(rnorm(length(genes) * length(samples)),
     nrow = length(genes),
     dimnames = list(genes, samples)
 )
-labels <- setNames(rep(c("BRAF_V600E", "RAS"), each = 8), samples[1:16])
+expr <- expr + outer(shift, ifelse(group == "BRAF_V600E", -0.5, 0.5))
+labels <- setNames(group[1:16], samples[1:16])
+
 fit <- brs_fit(expr, labels, genes = genes)
 fit
 

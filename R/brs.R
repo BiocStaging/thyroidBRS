@@ -39,11 +39,16 @@
 #'   samples that have one, or a single string naming a column of the
 #'   object's `colData()`/`pData()`. Names must match a subset of
 #'   `colnames(expr)`.
-#'   Values naming the BRAF group (`"BRAF_V600E"`, `"BRAF"`, `"BRAF-like"`,
-#'   `"Braf-like"`) and the RAS group (`"RAS"`, `"RAS-like"`, `"Ras-like"`)
-#'   are recognised, case-insensitively. Samples with any other value, `NA`,
-#'   or simply absent from `labels` are treated as unlabeled and excluded from
-#'   centroid fitting, but can still be scored with [predict.brs_fit()].
+#'   Values are matched case-insensitively and after collapsing runs of
+#'   non-alphanumeric characters, so `"BRAF V600E"`, `"BRAF-like"` and
+#'   `"braf_like"` are equivalent. The BRAF group is named by `"BRAF_V600E"`,
+#'   `"BRAF"`, `"BRAF-like"`, `"BRAF-mutant"`, `"V600E"` or `"BVL"`; the RAS
+#'   group by `"RAS"`, `"RAS-like"`, `"RAS-mutant"`, `"KRAS"`, `"NRAS"`,
+#'   `"HRAS"` or `"RL"`. Samples with any other value, `NA`, or simply absent
+#'   from `labels` are treated as unlabeled and excluded from centroid
+#'   fitting, but can still be scored with [predict.brs_fit()]. An
+#'   unrecognised value warns: a mis-specified label column otherwise looks
+#'   exactly like a cohort that has unlabeled samples.
 #' @param genes Character vector of gene symbols to use as the signature.
 #'   Defaults to the alias-resolved names in [brs_genes] (70 genes; `FLJ23867`
 #'   has no current symbol and is excluded).
@@ -65,6 +70,10 @@
 #'     \item{genes_missing}{Requested signature genes not found in `expr`.}
 #'     \item{genes_zero_variance}{Genes dropped because they had zero
 #'       variance across the reference samples (uninformative for distance).}
+#'     \item{genes_missing_values}{Genes dropped because they had a missing
+#'       value in at least one reference sample. Together with
+#'       `genes_zero_variance` these account for every requested gene that
+#'       was found but not used.}
 #'     \item{gene_mean, gene_sd}{Per-gene mean/SD from the reference samples,
 #'       used to z-score any sample later in [predict.brs_fit()].}
 #'     \item{centroid_braf, centroid_ras}{Mean z-score profile of the
@@ -87,11 +96,20 @@
 #' set.seed(1)
 #' genes <- na.omit(brs_genes$current_symbol)[1:10]
 #' samples <- paste0("S", 1:20)
+#' group <- rep(c("BRAF_V600E", "RAS"), each = 10)
+#'
+#' # Give the two groups the difference the signature is meant to detect, so
+#' # the example shows the classifier working rather than fitting noise.
+#' shift <- ifelse(
+#'     brs_genes$up_in[match(genes, brs_genes$current_symbol)] == "RAS", 1, -1
+#' )
 #' expr <- matrix(rnorm(length(genes) * length(samples)),
 #'     nrow = length(genes),
 #'     dimnames = list(genes, samples)
 #' )
-#' labels <- setNames(rep(c("BRAF_V600E", "RAS"), each = 8), samples[1:16])
+#' expr <- expr + outer(shift, ifelse(group == "BRAF_V600E", -0.5, 0.5))
+#' labels <- setNames(group[1:16], samples[1:16])
+#'
 #' fit <- brs_fit(expr, labels, genes = genes)
 #' fit
 #'
@@ -104,13 +122,16 @@ brs_fit <- function(expr, labels, genes = NULL, log2_transform = FALSE,
     expr <- .as_expr_matrix(expr, assay, "expr")
     .check_expr(expr)
 
+    # Resolve the signature and cut the matrix down to it before
+    # transforming. log2() is elementwise so the result is identical, but a
+    # GDC matrix is ~60,000 rows and only ~70 of them are ever used.
+    sel <- .select_genes(expr, genes)
+    expr <- sel$expr[sel$used, , drop = FALSE]
     if (log2_transform) expr <- .log2p1(expr)
 
-    sel <- .select_genes(expr, genes)
-    expr <- sel$expr
     labels <- .normalise_labels(labels, colnames(expr))
 
-    out <- .fit_centroids(expr[sel$used, names(labels), drop = FALSE], labels)
+    out <- .fit_centroids(expr[, names(labels), drop = FALSE], labels)
     out$genes_missing <- sel$missing
     out$reference_samples <- names(labels)
     out$log2_transform <- log2_transform
@@ -118,6 +139,7 @@ brs_fit <- function(expr, labels, genes = NULL, log2_transform = FALSE,
     structure(
         out[c(
             "genes_used", "genes_missing", "genes_zero_variance",
+            "genes_missing_values",
             "gene_mean", "gene_sd", "centroid_braf", "centroid_ras",
             "n_braf", "n_ras", "reference_samples",
             "log2_transform"
@@ -189,6 +211,7 @@ brs_fit <- function(expr, labels, genes = NULL, log2_transform = FALSE,
     list(
         genes_used = rownames(ref_expr),
         genes_zero_variance = flat,
+        genes_missing_values = incomplete,
         gene_mean = gene_mean,
         gene_sd = gene_sd,
         centroid_braf = rowMeans(z_ref[, is_braf, drop = FALSE]),
@@ -275,7 +298,9 @@ brs_fit <- function(expr, labels, genes = NULL, log2_transform = FALSE,
 #'   two need at least 3 samples. See the section below before changing it.
 #' @param assay Assay to use when `newdata` is a `SummarizedExperiment`; see
 #'   [brs_fit()].
-#' @param ... Unused; present for S3 consistency.
+#' @param ... Not used. Present for S3 consistency with [stats::predict()];
+#'   anything passed here is ignored, with a warning, so that a misspelled
+#'   argument name is not silently dropped.
 #'
 #' @return A data frame with one row per sample in `colnames(newdata)`:
 #'   `sample`, `brs_score` (normalized distance difference; negative = more
@@ -287,11 +312,20 @@ brs_fit <- function(expr, labels, genes = NULL, log2_transform = FALSE,
 #' set.seed(1)
 #' genes <- na.omit(brs_genes$current_symbol)[1:10]
 #' samples <- paste0("S", 1:20)
+#' group <- rep(c("BRAF_V600E", "RAS"), each = 10)
+#'
+#' # Give the two groups the difference the signature is meant to detect, so
+#' # the example shows the classifier working rather than fitting noise.
+#' shift <- ifelse(
+#'     brs_genes$up_in[match(genes, brs_genes$current_symbol)] == "RAS", 1, -1
+#' )
 #' expr <- matrix(rnorm(length(genes) * length(samples)),
 #'     nrow = length(genes),
 #'     dimnames = list(genes, samples)
 #' )
-#' labels <- setNames(rep(c("BRAF_V600E", "RAS"), each = 8), samples[1:16])
+#' expr <- expr + outer(shift, ifelse(group == "BRAF_V600E", -0.5, 0.5))
+#' labels <- setNames(group[1:16], samples[1:16])
+#'
 #' fit <- brs_fit(expr, labels, genes = genes)
 #' predict(fit, expr[, 17:20])
 #'
@@ -300,26 +334,22 @@ predict.brs_fit <- function(object, newdata, log2_transform = NULL,
                             standardize = c("reference", "cohort", "rank"),
                             assay = NULL, ...) {
     standardize <- match.arg(standardize)
+    .warn_unused_dots(...names(), ...length())
     newdata <- .as_expr_matrix(newdata, assay, "newdata")
     .check_expr(newdata)
 
-    if (.resolve_scale(object, log2_transform)) newdata <- .log2p1(newdata)
+    do_log2 <- .resolve_scale(object, log2_transform)
 
     newdata <- .drop_duplicate_rows(newdata, object$genes_used)
     newdata <- .match_alias_rows(newdata, object$genes_used)
 
-    missing_genes <- setdiff(object$genes_used, rownames(newdata))
-    if (length(missing_genes) > 0) {
-        stop("`newdata` is missing ", length(missing_genes),
-            " signature gene(s) used to fit `object`: ",
-            .truncate(missing_genes),
-            ". Re-fit with brs_fit() on a gene set newdata actually has, ",
-            "or subset object$genes_used.",
-            call. = FALSE
-        )
-    }
+    .check_newdata_genes(rownames(newdata), object$genes_used)
 
+    # Subset to the signature before transforming: log2() is elementwise,
+    # so this is the same answer without copying the whole matrix.
     m <- newdata[object$genes_used, , drop = FALSE]
+    if (do_log2) m <- .log2p1(m)
+
     st <- .standardize(m, object, standardize)
     z <- st$z
     g <- st$genes
@@ -364,11 +394,20 @@ predict.brs_fit <- function(object, newdata, log2_transform = NULL,
 #' set.seed(1)
 #' genes <- na.omit(brs_genes$current_symbol)[1:10]
 #' samples <- paste0("S", 1:20)
+#' group <- rep(c("BRAF_V600E", "RAS"), each = 10)
+#'
+#' # Give the two groups the difference the signature is meant to detect, so
+#' # the example shows the classifier working rather than fitting noise.
+#' shift <- ifelse(
+#'     brs_genes$up_in[match(genes, brs_genes$current_symbol)] == "RAS", 1, -1
+#' )
 #' expr <- matrix(rnorm(length(genes) * length(samples)),
 #'     nrow = length(genes),
 #'     dimnames = list(genes, samples)
 #' )
-#' labels <- setNames(rep(c("BRAF_V600E", "RAS"), each = 8), samples[1:16])
+#' expr <- expr + outer(shift, ifelse(group == "BRAF_V600E", -0.5, 0.5))
+#' labels <- setNames(group[1:16], samples[1:16])
+#'
 #' brs_score(expr, labels, genes = genes)
 #'
 #' @export
@@ -406,25 +445,43 @@ brs_score <- function(expr, labels, newdata = expr, genes = NULL,
 #' @param fit Optionally the `"brs_fit"` used to produce `predictions`, so the
 #'   overlap with its reference samples can be reported.
 #'
-#' @return A list with `n`, `n_concordant`, `pct_concordant`, `n_resubstituted`
-#'   (samples that also defined the centroids, `NA` if `fit` was not given) and
-#'   the confusion `table` (published vs. predicted).
+#' @return A list with `n`, `n_concordant`, `pct_concordant`,
+#'   `n_resubstituted` (samples that also defined the centroids, `NA` if
+#'   `fit` was not given) and the confusion `table` (published vs.
+#'   predicted). The table always carries both classes on both margins, even
+#'   when only one of them occurs, so that indexing it by name is safe.
+#'   Samples whose label names neither reference group are dropped with a
+#'   warning and are not counted in `n`.
 #'
 #' @examples
 #' set.seed(1)
 #' genes <- na.omit(brs_genes$current_symbol)[1:10]
 #' samples <- paste0("S", 1:20)
+#' group <- rep(c("BRAF_V600E", "RAS"), each = 10)
+#'
+#' # Give the two groups the difference the signature is meant to detect, so
+#' # the example shows the classifier working rather than fitting noise.
+#' shift <- ifelse(
+#'     brs_genes$up_in[match(genes, brs_genes$current_symbol)] == "RAS", 1, -1
+#' )
 #' expr <- matrix(rnorm(length(genes) * length(samples)),
 #'     nrow = length(genes),
 #'     dimnames = list(genes, samples)
 #' )
-#' labels <- setNames(rep(c("BRAF_V600E", "RAS"), each = 8), samples[1:16])
-#' fit <- brs_fit(expr, labels, genes = genes)
+#' expr <- expr + outer(shift, ifelse(group == "BRAF_V600E", -0.5, 0.5))
+#' labels <- setNames(group[1:16], samples[1:16])
+#'
+#' # Fit on 12 samples and compare against all 20, so that 8 of the
+#' # samples scored did not help define the centroids. Passing `fit` makes
+#' # validate_brs() report how much of the comparison is resubstitution.
+#' in_fit <- samples[c(1:6, 11:16)]
+#' fit <- brs_fit(expr, labels[in_fit], genes = genes)
 #' preds <- predict(fit, expr)
-#' validate_brs(preds, labels, fit = fit)
+#' validate_brs(preds, setNames(group, samples), fit = fit)
 #'
 #' @export
 validate_brs <- function(predictions, labels, fit = NULL) {
+    .check_predictions(predictions)
     groups <- .normalise_labels(labels, predictions$sample,
         what = "predictions$sample", min_per_group = 0L
     )
@@ -449,27 +506,17 @@ validate_brs <- function(predictions, labels, fit = NULL) {
     }
     published <- unname(labels[common])
 
-    n_resub <- NA_integer_
-    if (!is.null(fit)) {
-        if (!inherits(fit, "brs_fit")) {
-            stop("`fit` must be a \"brs_fit\" object.", call. = FALSE)
-        }
-        n_resub <- length(intersect(common, fit$reference_samples))
-        if (n_resub == length(common)) {
-            warning("Every compared sample also defined the centroids: this ",
-                "is a resubstitution estimate, not validation. See ",
-                "?validate_brs.",
-                call. = FALSE
-            )
-        }
-    }
+    n_resub <- .resubstitution_count(fit, common)
 
     list(
         n = length(common),
         n_concordant = sum(published == predicted),
         pct_concordant = round(100 * mean(published == predicted), 1),
         n_resubstituted = n_resub,
-        table = table(published = published, predicted = predicted)
+        table = table(
+            published = factor(published, levels = .brs_classes),
+            predicted = factor(predicted, levels = .brs_classes)
+        )
     )
 }
 
@@ -488,6 +535,12 @@ print.brs_fit <- function(x, ...) {
     if (length(x$genes_zero_variance) > 0) {
         cat("  Dropped (zero variance in reference): ",
             .truncate(x$genes_zero_variance), "\n",
+            sep = ""
+        )
+    }
+    if (length(x$genes_missing_values) > 0) {
+        cat("  Dropped (missing values in reference): ",
+            .truncate(x$genes_missing_values), "\n",
             sep = ""
         )
     }
@@ -675,10 +728,93 @@ print.brs_fit <- function(x, ...) {
 # Accepted synonyms for the two reference groups. The "*-like" labels are
 # kept for compatibility, but the paper's groups are defined by driver
 # mutation (see ?brs_fit).
+# `...` exists on predict() for S3 consistency, so a misspelled argument name
+# lands there and would otherwise be dropped without a word. `standardize` is
+# the trap: it decides the class threshold, and the package spells several of
+# its own internals the British way.
+.warn_unused_dots <- function(nms, n) {
+    if (n == 0L) return(invisible(NULL))
+    named <- if (is.null(nms)) character() else nms[nzchar(nms)]
+    detail <- if (length(named)) .truncate(named) else "all unnamed"
+    warning("Ignoring ", n, " argument(s) passed through `...` (", detail,
+        "). Check the spelling against ?predict.brs_fit.",
+        call. = FALSE
+    )
+    invisible(NULL)
+}
+
+.check_newdata_genes <- function(available, needed) {
+    missing_genes <- setdiff(needed, available)
+    if (length(missing_genes) > 0) {
+        stop("`newdata` is missing ", length(missing_genes),
+            " signature gene(s) used to fit `object`: ",
+            .truncate(missing_genes),
+            ". Re-fit with brs_fit() on a gene set newdata actually has, ",
+            "or subset object$genes_used.",
+            call. = FALSE
+        )
+    }
+    invisible(NULL)
+}
+
+.check_predictions <- function(predictions) {
+    if (!is.data.frame(predictions) ||
+        !all(c("sample", "brs_class") %in% names(predictions))) {
+        stop("`predictions` must be a data frame as returned by predict() ",
+            "or brs_score(), with `sample` and `brs_class` columns.",
+            call. = FALSE
+        )
+    }
+    invisible(NULL)
+}
+
+# How much of a comparison is resubstitution. NA when the fit was not given,
+# since there is then nothing to compare the sample sets against.
+.resubstitution_count <- function(fit, common) {
+    if (is.null(fit)) return(NA_integer_)
+    if (!inherits(fit, "brs_fit")) {
+        stop("`fit` must be a \"brs_fit\" object.", call. = FALSE)
+    }
+    n_resub <- length(intersect(common, fit$reference_samples))
+    if (n_resub == length(common)) {
+        warning("Every compared sample also defined the centroids: this ",
+            "is a resubstitution estimate, not validation. See ",
+            "?validate_brs.",
+            call. = FALSE
+        )
+    }
+    n_resub
+}
+
+# A label value that names neither group is dropped. That is the right thing
+# to do -- TCGA's own column has an "OTHER" level -- but doing it silently
+# hides a mis-specified label column, which looks identical to a cohort that
+# genuinely has unlabeled samples.
+.warn_unrecognised_labels <- function(raw, unmatched) {
+    bad <- unmatched & !is.na(raw)
+    if (!any(bad)) return(invisible(NULL))
+    warning(sum(bad), " sample(s) had a label value naming neither ",
+        "reference group and were treated as unlabeled: ",
+        .truncate(unique(raw[bad])),
+        ". See ?brs_fit for the values that are recognised.",
+        call. = FALSE
+    )
+    invisible(NULL)
+}
+
+# The two class labels, in a fixed order. Kept in one place so the confusion
+# table always has both on both margins.
+.brs_classes <- c("Braf-like", "Ras-like")
+
+# Keys are matched after lower-casing and collapsing every run of
+# non-alphanumeric characters to "_", so "BRAF V600E", "BRAF-like" and
+# "braf_like" all land on the same entry.
 .brs_label_map <- c(
     "braf_v600e" = "BRAF", "brafv600e" = "BRAF", "braf" = "BRAF",
-    "braf-like" = "BRAF", "braf_like" = "BRAF", "bvl" = "BRAF",
-    "ras" = "RAS", "ras-like" = "RAS", "ras_like" = "RAS", "rl" = "RAS"
+    "braf_like" = "BRAF", "bvl" = "BRAF", "braf_mutant" = "BRAF",
+    "v600e" = "BRAF",
+    "ras" = "RAS", "ras_like" = "RAS", "rl" = "RAS",
+    "ras_mutant" = "RAS", "kras" = "RAS", "nras" = "RAS", "hras" = "RAS"
 )
 
 .normalise_labels <- function(labels, samples, what = "colnames(expr)",
@@ -688,9 +824,13 @@ print.brs_fit <- function(x, ...) {
             call. = FALSE
         )
     }
-    keys <- tolower(trimws(as.character(labels)))
+    raw <- as.character(labels)
+    keys <- gsub("[^a-z0-9]+", "_", tolower(trimws(raw)))
+    keys <- gsub("^_|_$", "", keys)
     out <- unname(.brs_label_map[keys])
     names(out) <- names(labels)
+
+    .warn_unrecognised_labels(raw, is.na(out))
 
     out <- out[!is.na(out)]
     matched <- names(out) %in% samples
@@ -705,7 +845,8 @@ print.brs_fit <- function(x, ...) {
     if (length(out) == 0) {
         stop("No reference samples found: `labels` must name samples in ",
             what, " with a value identifying the BRAF group (e.g. ",
-            "\"BRAF_V600E\") or the RAS group (e.g. \"RAS\").",
+            "\"BRAF_V600E\") or the RAS group (e.g. \"RAS\"). Values ",
+            "seen in `labels`: ", .truncate(unique(raw)), ".",
             call. = FALSE
         )
     }

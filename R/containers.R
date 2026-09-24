@@ -42,8 +42,12 @@
 #' but the class call is not trustworthy; `predict()` warns when every sample
 #' lands on the same side, which is the usual symptom.
 #'
+#' @return This page documents the input containers the package accepts
+#'   rather than a function of its own. Whichever container the expression
+#'   arrives in, [brs_fit()] returns a `"brs_fit"` object and
+#'   [predict.brs_fit()] returns a data frame.
+#'
 #' @name containers
-#' @keywords internal
 #' @importFrom SummarizedExperiment assay assayNames colData
 #' @importFrom methods is
 NULL

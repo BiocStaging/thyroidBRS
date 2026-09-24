@@ -94,7 +94,11 @@ test_that("brs_score is equivalent to fit + predict", {
     expect_equal(one_shot, two_step)
 })
 
-test_that("the score follows the published formula", {
+test_that("scoring reproduces the standardize-then-subtract pipeline", {
+    # This mirrors the implementation, so it pins the wiring -- gene order,
+    # which mean/SD are used, that the reference path is the default -- but
+    # NOT the formula: a sign error made in both places would pass. The test
+    # below is the one that constrains the formula.
     cohort <- make_synthetic_cohort()
     fit <- brs_fit(cohort$expr, cohort$labels, genes = rownames(cohort$expr))
     preds <- predict(fit, cohort$expr)
@@ -105,6 +109,142 @@ test_that("the score follows the published formula", {
     d_r <- sqrt(colSums((z - fit$centroid_ras)^2) / p)
 
     expect_equal(preds$brs_score, unname(d_b - d_r))
+})
+
+test_that("the score matches closed-form values at known positions", {
+    # Independent of the implementation: place samples at points whose score
+    # is known from the definition alone, by inverting the standardization.
+    # A sample sitting on a centroid is at distance 0 from it and the full
+    # inter-centroid gap from the other; the midpoint is equidistant from
+    # both, so it must score exactly 0. This distinguishes the normalized
+    # Euclidean distance from the squared version.
+    cohort <- make_synthetic_cohort()
+    fit <- brs_fit(cohort$expr, cohort$labels, genes = rownames(cohort$expr))
+    g <- fit$genes_used
+    p <- length(g)
+
+    z_target <- cbind(
+        at_braf = fit$centroid_braf[g],
+        at_ras = fit$centroid_ras[g],
+        midpoint = (fit$centroid_braf[g] + fit$centroid_ras[g]) / 2
+    )
+    probe <- z_target * fit$gene_sd[g] + fit$gene_mean[g]
+
+    gap <- sqrt(sum((fit$centroid_braf[g] - fit$centroid_ras[g])^2) / p)
+    preds <- predict(fit, probe)
+
+    expect_equal(preds$brs_score, c(-gap, gap, 0))
+    expect_equal(preds$brs_class, c("Braf-like", "Ras-like", "Ras-like"))
+})
+
+test_that("unrecognised label values warn instead of vanishing", {
+    cohort <- make_synthetic_cohort()
+    labels <- cohort$labels
+    labels[1:5] <- "OTHER"
+
+    expect_warning(
+        fit <- brs_fit(cohort$expr, labels, genes = rownames(cohort$expr)),
+        "naming neither reference group"
+    )
+    expect_equal(fit$n_braf + fit$n_ras, length(labels) - 5L)
+})
+
+test_that("label values are matched across separators and RAS family genes", {
+    cohort <- make_synthetic_cohort()
+    labels <- cohort$labels
+    spaced <- ifelse(labels == "BRAF_V600E", "BRAF V600E", "NRAS")
+    names(spaced) <- names(labels)
+
+    fit_a <- brs_fit(cohort$expr, labels, genes = rownames(cohort$expr))
+    fit_b <- brs_fit(cohort$expr, spaced, genes = rownames(cohort$expr))
+    expect_equal(fit_a$centroid_braf, fit_b$centroid_braf)
+    expect_equal(fit_a$n_ras, fit_b$n_ras)
+})
+
+test_that("predict() warns about arguments passed through `...`", {
+    cohort <- make_synthetic_cohort()
+    fit <- brs_fit(cohort$expr, cohort$labels, genes = rownames(cohort$expr))
+
+    expect_warning(
+        out <- predict(fit, cohort$expr, standardise = "cohort"),
+        "passed through"
+    )
+    # The misspelling must not have silently changed the standardization.
+    expect_equal(out$brs_score, predict(fit, cohort$expr)$brs_score)
+})
+
+test_that("the confusion table always carries both classes", {
+    cohort <- make_synthetic_cohort()
+    fit <- brs_fit(cohort$expr, cohort$labels, genes = rownames(cohort$expr))
+    preds <- predict(fit, cohort$expr)
+
+    braf_only <- names(cohort$labels)[cohort$labels == "BRAF_V600E"]
+    res <- validate_brs(
+        preds[preds$sample %in% braf_only, ],
+        cohort$labels[braf_only]
+    )
+
+    expect_equal(dim(res$table), c(2L, 2L))
+    expect_equal(dimnames(res$table)$published, c("Braf-like", "Ras-like"))
+    expect_identical(res$table["Braf-like", "Ras-like"], 0L)
+})
+
+test_that("validate_brs() rejects something that is not a predictions frame", {
+    cohort <- make_synthetic_cohort()
+    expect_error(
+        validate_brs(data.frame(sample = names(cohort$labels)), cohort$labels),
+        "`sample` and `brs_class`"
+    )
+    expect_error(
+        validate_brs(cohort$expr, cohort$labels),
+        "must be a data frame"
+    )
+})
+
+test_that("validate_brs() separates resubstitution from real validation", {
+    cohort <- make_synthetic_cohort()
+    in_fit <- names(cohort$labels)[c(1:10, 31:40)]
+    fit <- brs_fit(cohort$expr, cohort$labels[in_fit],
+        genes = rownames(cohort$expr)
+    )
+    preds <- predict(fit, cohort$expr)
+
+    # Comparing against labels that mostly did not enter the fit is the case
+    # the vignette recommends, and it must not raise the resubstitution
+    # warning.
+    res <- expect_no_warning(validate_brs(preds, cohort$labels, fit = fit))
+    expect_equal(res$n_resubstituted, length(in_fit))
+    expect_lt(res$n_resubstituted, res$n)
+
+    # Without `fit` there is nothing to report.
+    expect_true(is.na(validate_brs(preds, cohort$labels)$n_resubstituted))
+})
+
+test_that("genes dropped for missing values are recorded, not just warned", {
+    cohort <- make_synthetic_cohort()
+    expr <- cohort$expr
+    expr["GENE1", 1] <- NA_real_
+    expr["GENE2", ] <- 5
+
+    expect_warning(
+        fit <- brs_fit(expr, cohort$labels, genes = rownames(expr)),
+        "missing values"
+    )
+    expect_identical(fit$genes_missing_values, "GENE1")
+    expect_identical(fit$genes_zero_variance, "GENE2")
+    # Every requested gene is now accounted for somewhere.
+    expect_equal(
+        length(fit$genes_used) + length(fit$genes_missing) +
+            length(fit$genes_zero_variance) + length(fit$genes_missing_values),
+        nrow(expr)
+    )
+})
+
+test_that("print.brs_fit reports what it dropped", {
+    cohort <- make_synthetic_cohort()
+    fit <- brs_fit(cohort$expr, cohort$labels, genes = rownames(cohort$expr))
+    expect_output(print(fit), "<brs_fit>")
+    expect_output(print(fit), "Signature genes used")
 })
 
 test_that("brs_scaled reproduces the published [-1, 1] rescaling", {

@@ -1,3 +1,44 @@
+# thyroidBRS 0.99.4
+
+Changes from a review of the package against what a Bioconductor reviewer
+looks at. Nothing here changes a score: the numbers in the README and the
+vignette are unchanged.
+
+* The help-page examples now build two groups with a real difference across
+  the signature, instead of fitting centroids on pure noise. The example on
+  `?validate_brs` was the worst of it: the page that explains why
+  resubstitution is not validation reported 75% concordance on noise. It now
+  fits on 12 samples, compares against 20, and reports how many of them were
+  resubstituted.
+* `?brs_genes` pointed at `data-raw/`, which `.Rbuildignore` keeps out of the
+  tarball, so an installed package sent readers to files it does not have.
+  Those references now name the repository and link to it.
+* `predict()` warns about anything passed through `...` instead of dropping
+  it. A misspelled `standardise=` silently produced the default
+  standardization, which decides the class threshold.
+* Label values naming neither reference group are still dropped, but now
+  warn. Values are matched after collapsing separators, and `KRAS`/`NRAS`/
+  `HRAS` are recognised, so TCGA-shaped label columns work as written. The
+  error raised when nothing matches now lists the values it saw.
+* `validate_brs()` checks that `predictions` is what it claims to be, and its
+  confusion table always carries both classes on both margins. It could
+  previously return a 1x1 table, which broke indexing it by name.
+* Genes dropped for having a missing value in the reference samples are
+  recorded in the fit as `genes_missing_values` and shown by `print()`. The
+  accounting of requested genes is now complete.
+* `brs_fit()` and `predict()` cut the matrix down to the signature before
+  applying `log2()`, rather than transforming and copying all ~60,000 rows to
+  use ~70 of them. Same result.
+* The test named for the published formula only re-derived the
+  implementation, so a sign error in both places would have passed. It is
+  renamed for what it does, and a new test pins the formula at positions
+  whose score follows from the definition alone.
+* `?containers` is user-facing documentation and is no longer marked
+  internal; `brs_fit()` and a runtime warning both send readers to it.
+* Corrected the vignette: each norm is divided by the square root of the
+  number of genes, not by the number of genes.
+* README documents installation with `BiocManager`.
+
 # thyroidBRS 0.99.3
 
 * Added the `DriverMutation` biocView. The score is defined by resemblance to

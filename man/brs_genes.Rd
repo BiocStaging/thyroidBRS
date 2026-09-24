@@ -42,8 +42,10 @@ The 71-gene expression signature used to compute the BRAF-RAS Score (BRS)
 for papillary thyroid carcinoma (PTC), as published in Agrawal et al.
 (2014), Figure S7A. No machine-readable gene list was released with the
 paper, so the symbols were transcribed from the published heatmap and then
-verified against it row by row; see \code{data-raw/brs_genes.md} for the
-provenance and the checks that were run.
+verified against it row by row. The provenance and the checks that were
+run are written up in \code{data-raw/brs_genes.md}, which is in the package
+repository rather than the installed package:
+\url{https://github.com/camilasauria/thyroidBRS/blob/main/data-raw/brs_genes.md}.
 }
 \section{Alias resolution}{
 
@@ -53,7 +55,9 @@ Four symbols in the 2014 figure are no longer the approved HGNC symbol:
 annotation use the new symbols, so matching on \code{original_symbol} silently
 loses those genes. Use \code{current_symbol}, which is what \code{\link[=brs_fit]{brs_fit()}} does by
 default. Resolution was checked against \code{org.Hs.eg.db}; re-run
-\code{data-raw/check_symbols.R} when the annotation is updated.
+\code{data-raw/check_symbols.R} when the annotation is updated. \verb{data-raw/} is
+not shipped in the installed package; it lives in the package repository,
+\url{https://github.com/camilasauria/thyroidBRS}.
 }
 
 \examples{

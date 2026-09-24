@@ -51,8 +51,10 @@ centroid `c(R)`:
 $$\mathrm{BRS}(t) = \lVert v(t) - c(B) \rVert_2 - \lVert v(t) - c(R) \rVert_2$$
 
 where `v(t)` is the sample's expression across the signature, z-scored
-gene-by-gene against the reference cohort, and the norm is normalized by the
-number of genes. Negative scores are BRAF^V600E^-like, positive RAS-like.
+gene-by-gene against the reference cohort, and each norm is divided by the
+square root of the number of signature genes, so the score does not depend on
+how many of them survived. Negative scores are BRAF^V600E^-like, positive
+ones RAS-like.
 
 `predict()` returns two flavours of the same quantity:
 
@@ -254,7 +256,9 @@ RAS-like, it gets 8% of them right. That is why it is not the default.
 
 ## Using real TCGA data
 
-`data-raw/validate_tcga.R` in the package sources runs the full reproduction.
+`data-raw/validate_tcga.R` runs the full reproduction. It lives in the
+[package repository](https://github.com/camilasauria/thyroidBRS), not in the
+installed package.
 The shape of it:
 
 ```r

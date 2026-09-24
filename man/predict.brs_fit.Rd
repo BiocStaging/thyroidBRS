@@ -36,7 +36,9 @@ two need at least 3 samples. See the section below before changing it.}
 \item{assay}{Assay to use when \code{newdata} is a \code{SummarizedExperiment}; see
 \code{\link[=brs_fit]{brs_fit()}}.}
 
-\item{...}{Unused; present for S3 consistency.}
+\item{...}{Not used. Present for S3 consistency with \code{\link[stats:predict]{stats::predict()}};
+anything passed here is ignored, with a warning, so that a misspelled
+argument name is not silently dropped.}
 }
 \value{
 A data frame with one row per sample in \code{colnames(newdata)}:
@@ -112,11 +114,20 @@ the same axis as the published figures.
 set.seed(1)
 genes <- na.omit(brs_genes$current_symbol)[1:10]
 samples <- paste0("S", 1:20)
+group <- rep(c("BRAF_V600E", "RAS"), each = 10)
+
+# Give the two groups the difference the signature is meant to detect, so
+# the example shows the classifier working rather than fitting noise.
+shift <- ifelse(
+    brs_genes$up_in[match(genes, brs_genes$current_symbol)] == "RAS", 1, -1
+)
 expr <- matrix(rnorm(length(genes) * length(samples)),
     nrow = length(genes),
     dimnames = list(genes, samples)
 )
-labels <- setNames(rep(c("BRAF_V600E", "RAS"), each = 8), samples[1:16])
+expr <- expr + outer(shift, ifelse(group == "BRAF_V600E", -0.5, 0.5))
+labels <- setNames(group[1:16], samples[1:16])
+
 fit <- brs_fit(expr, labels, genes = genes)
 predict(fit, expr[, 17:20])
 

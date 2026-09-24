@@ -17,9 +17,13 @@ present in both \code{predictions$sample} and \code{names(labels)} are compared.
 overlap with its reference samples can be reported.}
 }
 \value{
-A list with \code{n}, \code{n_concordant}, \code{pct_concordant}, \code{n_resubstituted}
-(samples that also defined the centroids, \code{NA} if \code{fit} was not given) and
-the confusion \code{table} (published vs. predicted).
+A list with \code{n}, \code{n_concordant}, \code{pct_concordant},
+\code{n_resubstituted} (samples that also defined the centroids, \code{NA} if
+\code{fit} was not given) and the confusion \code{table} (published vs.
+predicted). The table always carries both classes on both margins, even
+when only one of them occurs, so that indexing it by name is safe.
+Samples whose label names neither reference group are dropped with a
+warning and are not counted in \code{n}.
 }
 \description{
 Compares \code{\link[=predict.brs_fit]{predict.brs_fit()}} output against a reference label vector.
@@ -42,13 +46,26 @@ published \code{BRAF_RAF_class} and \code{BRAF_RAF_score}.
 set.seed(1)
 genes <- na.omit(brs_genes$current_symbol)[1:10]
 samples <- paste0("S", 1:20)
+group <- rep(c("BRAF_V600E", "RAS"), each = 10)
+
+# Give the two groups the difference the signature is meant to detect, so
+# the example shows the classifier working rather than fitting noise.
+shift <- ifelse(
+    brs_genes$up_in[match(genes, brs_genes$current_symbol)] == "RAS", 1, -1
+)
 expr <- matrix(rnorm(length(genes) * length(samples)),
     nrow = length(genes),
     dimnames = list(genes, samples)
 )
-labels <- setNames(rep(c("BRAF_V600E", "RAS"), each = 8), samples[1:16])
-fit <- brs_fit(expr, labels, genes = genes)
+expr <- expr + outer(shift, ifelse(group == "BRAF_V600E", -0.5, 0.5))
+labels <- setNames(group[1:16], samples[1:16])
+
+# Fit on 12 samples and compare against all 20, so that 8 of the
+# samples scored did not help define the centroids. Passing `fit` makes
+# validate_brs() report how much of the comparison is resubstitution.
+in_fit <- samples[c(1:6, 11:16)]
+fit <- brs_fit(expr, labels[in_fit], genes = genes)
 preds <- predict(fit, expr)
-validate_brs(preds, labels, fit = fit)
+validate_brs(preds, setNames(group, samples), fit = fit)
 
 }
