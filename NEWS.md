@@ -1,4 +1,4 @@
-# thyroidBRS 0.99.4
+# thyroidBRS 0.99.5
 
 Changes from a review of the package against what a Bioconductor reviewer
 looks at. Nothing here changes a score: the numbers in the README and the
@@ -38,6 +38,11 @@ vignette are unchanged.
 * Corrected the vignette: each norm is divided by the square root of the
   number of genes, not by the number of genes.
 * README documents installation with `BiocManager`.
+
+These changes were first pushed as 0.99.4. That version number was consumed
+by the submission bot while it was reporting the previous build, so it could
+never receive a build report of its own; the version was incremented again
+rather than leave the reviewed code unreported.
 
 # thyroidBRS 0.99.3
 
